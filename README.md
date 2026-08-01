@@ -2,6 +2,22 @@
 
 Projeto educacional full stack para criar e operar agentes de IA, CRM, fluxos, automações, campanhas e integrações de WhatsApp. A distribuição pública usa marca neutra: antes de publicar sua instalação, troque `SUA_EMPRESA` e os arquivos em `frontend/public/branding/` pela identidade da sua empresa.
 
+## Visão da plataforma
+
+As telas abaixo usam uma marca demonstrativa e dados totalmente fictícios.
+
+### Dashboard
+
+![Dashboard com indicadores, funil comercial e atividades recentes](docs/assets/screenshots/dashboard.png)
+
+### CRM
+
+![CRM em formato Kanban com leads distribuídos pelas etapas do funil](docs/assets/screenshots/crm.png)
+
+### Login
+
+![Tela de login da plataforma](docs/assets/screenshots/login.png)
+
 ## Stack
 
 - Backend: Python 3.12, FastAPI, SQLAlchemy e Alembic.
