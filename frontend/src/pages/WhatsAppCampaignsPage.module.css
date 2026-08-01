@@ -1,0 +1,533 @@
+/* Rebranding TOTAL da página de Campanhas WhatsApp — linguagem operacional do dashboard/CRM.
+   Reescreve densidade, hierarquia e anatomia (não estiliza o layout antigo).
+   Tokens semânticos --camp-* com par light/dark via .root--dark,
+   no mesmo padrão do CRM (--crm-modern-*) / dashboard (--modern-*) / tags (--tags-*). */
+
+.root {
+  --camp-canvas: #f7f7f7;
+  --camp-surface: #ffffff;
+  --camp-surface-muted: #fafafa;
+  --camp-ink: #020323;
+  --camp-ink-soft: rgba(2, 3, 35, 0.66);
+  --camp-ink-muted: rgba(2, 3, 35, 0.52);
+  --camp-ink-faint: rgba(2, 3, 35, 0.38);
+  --camp-border: rgba(2, 3, 35, 0.1);
+  --camp-border-strong: rgba(2, 3, 35, 0.18);
+  --camp-hover: rgba(2, 3, 35, 0.04);
+  --camp-active: rgba(2, 3, 35, 0.06);
+  --camp-signal: #0f766e;
+  --camp-signal-soft: rgba(15, 118, 110, 0.1);
+  --camp-danger: #dc2626;
+  --camp-danger-soft: rgba(220, 38, 38, 0.09);
+  --camp-success: #16a34a;
+  --camp-success-soft: rgba(22, 163, 74, 0.09);
+  --camp-warning: #b45309;
+  --camp-warning-soft: rgba(180, 83, 9, 0.1);
+  --camp-overlay: rgba(2, 3, 35, 0.64);
+  --camp-focus: 0 0 0 3px rgba(2, 3, 35, 0.12);
+  --camp-shadow: 0 1px 2px rgba(2, 3, 35, 0.025);
+  --camp-shadow-hover: 0 5px 16px rgba(2, 3, 35, 0.075);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+  color: var(--camp-ink);
+}
+
+.root--dark {
+  --camp-canvas: #020323;
+  --camp-surface: #08091f;
+  --camp-surface-muted: #0b0d24;
+  --camp-ink: #f7f7f7;
+  --camp-ink-soft: rgba(247, 247, 247, 0.72);
+  --camp-ink-muted: rgba(247, 247, 247, 0.56);
+  --camp-ink-faint: rgba(247, 247, 247, 0.4);
+  --camp-border: rgba(255, 255, 255, 0.12);
+  --camp-border-strong: rgba(255, 255, 255, 0.22);
+  --camp-hover: rgba(255, 255, 255, 0.06);
+  --camp-active: rgba(255, 255, 255, 0.09);
+  --camp-signal: #2dd4bf;
+  --camp-signal-soft: rgba(45, 212, 191, 0.14);
+  --camp-danger: #f87171;
+  --camp-danger-soft: rgba(248, 113, 113, 0.14);
+  --camp-success: #4ade80;
+  --camp-success-soft: rgba(74, 222, 128, 0.14);
+  --camp-warning: #fbbf24;
+  --camp-warning-soft: rgba(251, 191, 36, 0.14);
+  --camp-overlay: rgba(0, 0, 0, 0.74);
+  --camp-focus: 0 0 0 3px rgba(247, 247, 247, 0.16);
+  --camp-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --camp-shadow-hover: 0 7px 18px rgba(0, 0, 0, 0.28);
+}
+
+.shell {
+  max-width: 1500px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ---- Cabeçalho de página compacto (sem landing hero) ---- */
+.pageHead {
+  min-height: 63px;
+  padding: 13px 15px;
+  border: 1px solid var(--camp-border);
+  border-radius: 11px;
+  background: var(--camp-surface);
+  box-shadow: var(--camp-shadow);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.pageHeadCopy {
+  min-width: 0;
+}
+
+.pageTitle {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+@media (min-width: 640px) {
+  .pageTitle {
+    font-size: 24px;
+  }
+}
+
+.pageSubtitle {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--camp-ink-muted);
+  line-height: 1.4;
+  max-width: 640px;
+}
+
+.pageActions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+/* ---- KPI grid (número grande tabular, sem ícone decorativo) ---- */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (min-width: 1280px) {
+  .kpiGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.kpiCard {
+  min-width: 0;
+  border: 1px solid var(--camp-border);
+  border-radius: 11px;
+  background: var(--camp-surface);
+  box-shadow: var(--camp-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 96px;
+  padding: 15px 16px;
+}
+
+.kpiLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--camp-ink-soft);
+}
+
+.kpiValue {
+  font-size: clamp(23px, 2.4vw, 31px);
+  font-weight: 560;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kpiDetail {
+  font-size: 11px;
+  margin-top: auto;
+  color: var(--camp-ink-muted);
+}
+
+/* ---- Painel base ---- */
+.panel {
+  min-width: 0;
+  border: 1px solid var(--camp-border);
+  border-radius: 11px;
+  background: var(--camp-surface);
+  box-shadow: var(--camp-shadow);
+}
+
+.panelHead {
+  min-height: 58px;
+  padding: 11px 15px;
+  border-bottom: 1px solid var(--camp-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.panelHeadCopy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.panelHeadTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panelHeadTitle {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.panelHeadSubtitle {
+  font-size: 11px;
+  color: var(--camp-ink-muted);
+  line-height: 1.4;
+}
+
+/* ---- Toolbar: busca + pills de status ---- */
+.toolbar {
+  padding: 11px 15px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.searchBox {
+  position: relative;
+  flex: 1 1 220px;
+  min-width: 200px;
+  max-width: 360px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  color: var(--camp-ink-muted);
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  height: 34px;
+  padding: 0 11px 0 32px;
+  border-radius: 8px;
+  border: 1px solid var(--camp-border);
+  background: var(--camp-surface);
+  color: var(--camp-ink);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.searchInput::placeholder {
+  color: var(--camp-ink-muted);
+}
+
+.searchInput:focus {
+  border-color: var(--camp-border-strong);
+  box-shadow: var(--camp-focus);
+}
+
+.filterPills {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: 1 1 auto;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 3px;
+  border: 1px solid var(--camp-border);
+  border-radius: 9px;
+  background: var(--camp-surface-muted);
+}
+
+.pillButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 9px;
+  height: 32px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: var(--camp-ink-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+}
+
+.pillButton:hover {
+  color: var(--camp-ink-soft);
+}
+
+/* Estado ativo = realce sutil de superfície (DNA canônico), sem inversão forte. */
+.pillActive {
+  background: var(--camp-surface);
+  color: var(--camp-ink);
+  font-weight: 600;
+  box-shadow: var(--camp-shadow);
+}
+
+.pillBadge {
+  font-size: 10px;
+  font-weight: 600;
+  min-width: 18px;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--camp-hover);
+  color: var(--camp-ink-muted);
+  text-align: center;
+}
+
+.pillActive .pillBadge {
+  background: var(--camp-active);
+  color: var(--camp-ink-soft);
+}
+
+/* ---- Layout principal: lista + sidebar ---- */
+.mainLayout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (min-width: 1280px) {
+  .mainLayout {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+}
+
+.listColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* ---- Estado de loading ---- */
+.loadingCard {
+  min-height: 240px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--camp-border);
+  border-radius: 11px;
+  background: var(--camp-surface);
+  box-shadow: var(--camp-shadow);
+  color: var(--camp-ink-soft);
+  font-size: 13px;
+  font-weight: 500;
+  gap: 10px;
+}
+
+.loadingInner {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ---- Sidebar operacional (densa) ---- */
+.sidebarPanel {
+  min-width: 0;
+  border: 1px solid var(--camp-border);
+  border-radius: 11px;
+  background: var(--camp-surface);
+  box-shadow: var(--camp-shadow);
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 1280px) {
+  .sidebarPanel {
+    position: sticky;
+    top: 12px;
+  }
+}
+
+.sidebarHeader {
+  min-height: 58px;
+  padding: 11px 15px;
+  border-bottom: 1px solid var(--camp-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sidebarTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sidebarTitle {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.sidebarSubtitle {
+  font-size: 11px;
+  color: var(--camp-ink-muted);
+  line-height: 1.4;
+}
+
+.sidebarBody {
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Progresso geral */
+.progressBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.progressHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--camp-ink-muted);
+}
+
+.progressValue {
+  color: var(--camp-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.progressTrack {
+  height: 5px;
+  width: 100%;
+  border-radius: 999px;
+  background: var(--camp-hover);
+  overflow: hidden;
+}
+
+.progressBar {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--camp-signal);
+  transition: width 300ms ease;
+}
+
+/* Lista de status (densa) */
+.statusList {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--camp-border);
+  border-radius: 9px;
+  overflow: hidden;
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 11px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--camp-border);
+}
+
+.statusRow:last-child {
+  border-bottom: none;
+}
+
+.statusRowLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--camp-ink-soft);
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.statusRowValue {
+  font-weight: 600;
+  color: var(--camp-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Foco visível em elementos interativos nativos ---- */
+.searchInput:focus-visible,
+.pillButton:focus-visible {
+  outline: 2px solid var(--camp-border-strong);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progressBar,
+  .searchInput,
+  .pillButton {
+    transition: none;
+  }
+}
+
+@media (max-width: 639px) {
+  .pageActions {
+    width: 100%;
+  }
+
+  .pageActions > button {
+    min-height: 40px;
+  }
+
+  .pageActions > button:last-child {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .searchBox {
+    max-width: none;
+  }
+
+  .searchInput,
+  .pillButton {
+    min-height: 40px;
+  }
+}

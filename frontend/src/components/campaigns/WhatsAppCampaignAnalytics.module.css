@@ -1,0 +1,667 @@
+.card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--camp-border);
+  border-radius: 11px;
+  background: var(--camp-surface);
+  box-shadow: var(--camp-shadow);
+  color: var(--camp-ink);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.card:hover,
+.cardExpanded {
+  border-color: var(--camp-border-strong);
+  box-shadow: var(--camp-shadow-hover);
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 14px;
+  padding: 14px 15px 10px;
+}
+
+.identity {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 11px;
+}
+
+.statusIcon {
+  --campaign-status: var(--camp-ink-muted);
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--camp-border);
+  border-color: color-mix(in srgb, var(--campaign-status) 24%, var(--camp-border));
+  border-radius: 9px;
+  background: var(--camp-hover);
+  background: color-mix(in srgb, var(--campaign-status) 8%, var(--camp-surface));
+  color: var(--campaign-status);
+}
+
+.statusGlyph {
+  width: 15px;
+  height: 15px;
+}
+
+.identityCopy {
+  min-width: 0;
+  flex: 1;
+}
+
+.titleRow {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.title {
+  min-width: 0;
+  overflow: hidden;
+  margin: 0;
+  color: var(--camp-ink);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statusBadge,
+.sendingBadge,
+.countBadge,
+.rateBadge,
+.replyBadge,
+.executionBadge {
+  display: inline-flex;
+  min-height: 21px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.statusBadge {
+  --campaign-status: var(--camp-ink-muted);
+  border: 1px solid var(--camp-border);
+  border-color: color-mix(in srgb, var(--campaign-status) 25%, var(--camp-border));
+  background: var(--camp-hover);
+  background: color-mix(in srgb, var(--campaign-status) 8%, var(--camp-surface));
+  color: var(--campaign-status);
+}
+
+.statusProcessing {
+  --campaign-status: var(--camp-signal);
+}
+
+.statusCompleted {
+  --campaign-status: var(--camp-success);
+}
+
+.statusPaused {
+  --campaign-status: var(--camp-warning);
+}
+
+.statusFailed {
+  --campaign-status: var(--camp-danger);
+}
+
+.statusDraft,
+.statusNeutral {
+  --campaign-status: var(--camp-ink-muted);
+}
+
+.sendingBadge {
+  gap: 5px;
+  border: 1px solid var(--camp-border);
+  border-color: color-mix(in srgb, var(--camp-signal) 24%, var(--camp-border));
+  background: var(--camp-signal-soft);
+  color: var(--camp-signal);
+}
+
+.inlineIcon {
+  width: 12px;
+  height: 12px;
+}
+
+.metadata {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px 12px;
+  margin-top: 7px;
+  color: var(--camp-ink-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  flex-wrap: wrap;
+}
+
+.metaItem {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.metaIcon {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  color: var(--camp-ink-muted);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  outline: none;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+}
+
+.button:focus-visible {
+  box-shadow: var(--camp-focus);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.buttonPrimary {
+  border-color: var(--camp-ink);
+  background: var(--camp-ink);
+  color: var(--camp-surface);
+}
+
+.buttonPrimary:not(:disabled):hover {
+  opacity: 0.88;
+}
+
+.buttonSecondary {
+  border-color: var(--camp-border);
+  background: var(--camp-surface);
+  color: var(--camp-ink-soft);
+}
+
+.buttonSecondary:not(:disabled):hover {
+  border-color: var(--camp-border-strong);
+  background: var(--camp-hover);
+  color: var(--camp-ink);
+}
+
+.buttonDanger {
+  border-color: var(--camp-border);
+  border-color: color-mix(in srgb, var(--camp-danger) 18%, var(--camp-border));
+  background: var(--camp-surface);
+  color: var(--camp-danger);
+}
+
+.buttonDanger:not(:disabled):hover {
+  border-color: var(--camp-danger);
+  border-color: color-mix(in srgb, var(--camp-danger) 34%, var(--camp-border));
+  background: var(--camp-danger-soft);
+  background: color-mix(in srgb, var(--camp-danger) 7%, var(--camp-surface));
+}
+
+.iconButton {
+  width: 36px;
+  padding: 0;
+}
+
+.buttonIcon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.progressSection {
+  padding: 0 15px 14px 60px;
+}
+
+.progressCopy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+  color: var(--camp-ink-muted);
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.progressCopy strong {
+  color: var(--camp-ink-soft);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.progressTrack {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--camp-hover);
+}
+
+.progressBar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--camp-signal);
+  transition: width 300ms ease;
+}
+
+.progressBarFailed {
+  background: var(--camp-danger);
+}
+
+.details {
+  border-top: 1px solid var(--camp-border);
+  background: var(--camp-surface-muted);
+}
+
+.detailsContent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+}
+
+.loadingState,
+.errorState {
+  min-height: 112px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 18px;
+  color: var(--camp-ink-muted);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.loadingIcon,
+.errorIcon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.errorState {
+  color: var(--camp-danger);
+}
+
+.metricGrid {
+  display: grid;
+  overflow: hidden;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid var(--camp-border);
+  border-radius: 9px;
+  background: var(--camp-surface);
+}
+
+.metric {
+  display: flex;
+  min-width: 0;
+  min-height: 92px;
+  flex-direction: column;
+  padding: 12px 13px;
+  border-right: 1px solid var(--camp-border);
+}
+
+.metric:last-child {
+  border-right: 0;
+}
+
+.metricHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--camp-ink-soft);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.metricIcon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  color: var(--camp-ink-muted);
+}
+
+.successIcon {
+  color: var(--camp-success);
+}
+
+.metricValueRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.metricValue {
+  margin-top: 7px;
+  color: var(--camp-ink);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.metricDetail {
+  margin-top: auto;
+  padding-top: 8px;
+  color: var(--camp-ink-muted);
+  font-size: 10px;
+}
+
+.rateBadge,
+.replyBadge,
+.countBadge {
+  background: var(--camp-success-soft);
+  background: color-mix(in srgb, var(--camp-success) 9%, var(--camp-surface));
+  color: var(--camp-success);
+}
+
+.rateBadge {
+  min-height: 19px;
+  padding: 2px 6px;
+}
+
+.listGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.listPanel {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--camp-border);
+  border-radius: 9px;
+  background: var(--camp-surface);
+}
+
+.listHeader {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--camp-border);
+  background: var(--camp-surface);
+}
+
+.listTitle {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: var(--camp-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.listTitleIcon,
+.headerIcon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.headerIcon {
+  color: var(--camp-ink-muted);
+}
+
+.listScroll {
+  max-height: 300px;
+  overflow-y: auto;
+  scrollbar-color: var(--camp-border-strong) transparent;
+  scrollbar-width: thin;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  min-height: 53px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--camp-border);
+  transition: background-color 150ms ease;
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.row:hover {
+  background: var(--camp-hover);
+}
+
+.rowIdentity {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rowName {
+  overflow: hidden;
+  color: var(--camp-ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowSecondary {
+  overflow: hidden;
+  color: var(--camp-ink-muted);
+  font-size: 10px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowMeta {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 3px;
+  text-align: right;
+}
+
+.rowTime {
+  color: var(--camp-ink-muted);
+  font-size: 9px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.executionBadge {
+  --execution-color: var(--camp-ink-muted);
+  border: 1px solid var(--camp-border);
+  border-color: color-mix(in srgb, var(--execution-color) 22%, var(--camp-border));
+  background: var(--camp-hover);
+  background: color-mix(in srgb, var(--execution-color) 7%, var(--camp-surface));
+  color: var(--execution-color);
+}
+
+.executionReplied {
+  --execution-color: var(--camp-success);
+}
+
+.executionSent {
+  --execution-color: var(--camp-signal);
+}
+
+.executionFailed {
+  --execution-color: var(--camp-danger);
+}
+
+.executionScheduled {
+  --execution-color: var(--camp-warning);
+}
+
+.executionPending,
+.executionNeutral {
+  --execution-color: var(--camp-ink-muted);
+}
+
+.emptyState {
+  min-height: 106px;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  color: var(--camp-ink-muted);
+  font-size: 11px;
+  text-align: center;
+}
+
+.spin {
+  animation: campaignAnalyticsSpin 850ms linear infinite;
+}
+
+@keyframes campaignAnalyticsSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 860px) {
+  .summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .actions {
+    justify-content: flex-start;
+    padding-left: 45px;
+  }
+}
+
+@media (max-width: 680px) {
+  .metricGrid,
+  .listGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .metric {
+    min-height: 84px;
+    border-right: 0;
+    border-bottom: 1px solid var(--camp-border);
+  }
+
+  .metric:last-child {
+    border-bottom: 0;
+  }
+
+  .progressSection {
+    padding-left: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .summary {
+    padding: 12px 12px 9px;
+  }
+
+  .identity {
+    gap: 9px;
+  }
+
+  .statusIcon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .metadata {
+    gap: 5px 10px;
+  }
+
+  .actions {
+    width: 100%;
+    justify-content: stretch;
+    padding-left: 0;
+  }
+
+  .actions > .button:not(.iconButton) {
+    min-width: 0;
+    flex: 1 1 0;
+  }
+
+  .detailsButton {
+    min-width: 0;
+  }
+
+  .progressSection {
+    padding-right: 12px;
+    padding-bottom: 12px;
+    padding-left: 12px;
+  }
+
+  .detailsContent {
+    padding: 10px;
+  }
+
+  .row {
+    align-items: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .button,
+  .progressBar,
+  .row {
+    transition: none;
+  }
+
+  .spin {
+    animation-duration: 1.6s;
+  }
+}

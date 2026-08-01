@@ -1,0 +1,369 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@300;400;500;600;700&family=Lexend+Deca:wght@300;400;500;600;700&display=swap');
+
+@import "tailwindcss";
+@import "flowbite-react/plugin/tailwindcss";
+
+@config "../tailwind.config.js";
+@source "../.flowbite-react/class-list.json";
+
+
+/*
+  =========================================
+  DEFAULT BRAND TOKENS
+  Official palette: #020323, #f7f7f7, #ffffff.
+  Legacy variable names are kept so existing components inherit the new brand.
+  =========================================
+*/
+:root,
+:root[data-theme='light'] {
+  --brand-primary: #020323;
+  --brand-ink: #020323;
+  --brand-canvas: #f7f7f7;
+  --brand-white: #ffffff;
+  --brand-primary-hover: color-mix(in srgb, var(--brand-primary) 92%, var(--brand-white));
+  --brand-primary-soft: rgba(2, 3, 35, 0.08);
+  --brand-primary-softer: rgba(2, 3, 35, 0.04);
+  --app-canvas: var(--brand-canvas);
+  --bg-sidebar: #fbfbfc;
+  --bg-main: var(--brand-white);
+  --bg-card: var(--brand-white);
+  --bg-popover: var(--brand-white);
+  --bg-input: var(--brand-white);
+  --hover-bg: #f3f4f6;
+  --active-bg: #f1f5f9;
+  --glass-bg: rgba(251, 251, 252, 0.94);
+  --overlay-bg: rgba(2, 3, 35, 0.42);
+
+  /* Primary Brand */
+  --primary-50: var(--brand-canvas);
+  --primary-100: #ececf0;
+  --primary-200: #d7d7df;
+  --primary-300: #b7b8c8;
+  --primary-400: #85879e;
+  --primary-500: #4d506d;
+  --primary-600: var(--brand-primary);
+  --primary-700: var(--brand-primary);
+  --primary-800: var(--brand-primary);
+  --primary-900: var(--brand-primary);
+
+  /* Secondary and accent are neutral brand surfaces. */
+  --secondary-50: var(--brand-white);
+  --secondary-100: var(--brand-canvas);
+  --secondary-200: #ececf0;
+  --secondary-300: #d7d7df;
+  --secondary-400: #b7b8c8;
+  --secondary-500: var(--brand-canvas);
+  --secondary-600: #d7d7df;
+  --secondary-700: #85879e;
+  --secondary-800: #4d506d;
+  --secondary-900: var(--brand-primary);
+
+  --accent-50: var(--brand-white);
+  --accent-100: var(--brand-canvas);
+  --accent-200: #ececf0;
+  --accent-300: #d7d7df;
+  --accent-400: #b7b8c8;
+  --accent-500: var(--brand-canvas);
+  --accent-600: var(--brand-primary);
+  --accent-700: var(--brand-primary);
+  --accent-800: var(--brand-primary);
+  --accent-900: var(--brand-primary);
+
+  /* Neutral Scale */
+  --neutral-50: var(--brand-white);
+  --neutral-100: var(--brand-canvas);
+  --neutral-200: #ececf0;
+  --neutral-300: #d7d7df;
+  --neutral-400: #b7b8c8;
+  --neutral-500: #85879e;
+  --neutral-600: #4d506d;
+  --neutral-700: #202443;
+  --neutral-800: #11142f;
+  --neutral-900: var(--brand-primary);
+
+  /* Semantic Colors - Mantidas por usabilidade */
+  --success: #22c55e;
+  --success-light: #dcfce7;
+  --warning: #f59e0b;
+  --warning-light: #fef3c7;
+  --error: #ef4444;
+  --error-light: #fef2f2;
+  --info: #3b82f6;
+  --info-light: #dbeafe;
+  --accent-red: var(--error);
+  --accent-green: var(--success);
+  --accent-orange: #f97316;
+  --accent-blue: var(--info);
+  --accent-purple: #a855f7;
+
+  /* Surface Colors */
+  --surface-primary: var(--bg-card);
+  --surface-secondary: var(--app-canvas);
+  --surface-tertiary: var(--hover-bg);
+  --surface-overlay: rgba(255, 255, 255, 0.95);
+
+  /* Border Colors */
+  --border-default: #ececf0;
+  --border-light: var(--brand-canvas);
+  --border-medium: #d7d7df;
+  --border-focus: var(--brand-primary);
+  --border-hover: #85879e;
+  --card-border: #ececf0;
+  --border-color: #f0f0f0;
+  --focus-border: rgba(2, 3, 35, 0.28);
+  --focus-ring: 0 0 0 3px rgba(2, 3, 35, 0.06);
+
+  /* Text Colors */
+  --text-primary: var(--brand-primary);
+  --text-secondary: #4d506d;
+  --text-muted: #85879e;
+  --text-inverse: var(--brand-white);
+
+  /* Modern Shadow System */
+  --shadow-sm: 0 1px 2px 0 rgba(2, 3, 35, 0.05);
+  --shadow-base: 0 1px 3px 0 rgba(2, 3, 35, 0.1), 0 1px 2px 0 rgba(2, 3, 35, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(2, 3, 35, 0.1), 0 2px 4px -1px rgba(2, 3, 35, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(2, 3, 35, 0.1), 0 4px 6px -2px rgba(2, 3, 35, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(2, 3, 35, 0.1), 0 10px 10px -5px rgba(2, 3, 35, 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --shadow-flat: 0 1px 2px rgba(2, 3, 35, 0.06);
+  --shadow-flat-md: 0 8px 24px rgba(2, 3, 35, 0.08);
+  --shadow-flat-lg: 0 16px 40px rgba(2, 3, 35, 0.1);
+  --shadow-color-primary: 0 4px 14px 0 rgba(2, 3, 35, 0.15);
+  --shadow-color-secondary: 0 4px 14px 0 rgba(2, 3, 35, 0.08);
+  --shadow-card: 0 8px 30px rgba(2, 3, 35, 0.04);
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, var(--brand-primary) 0%, #11142f 100%);
+  --gradient-secondary: linear-gradient(135deg, var(--brand-white) 0%, var(--brand-canvas) 100%);
+  --gradient-accent: linear-gradient(135deg, var(--brand-canvas) 0%, var(--brand-white) 100%);
+  --gradient-surface: linear-gradient(135deg, var(--brand-canvas) 0%, var(--brand-white) 100%);
+  --gradient-header: linear-gradient(180deg, var(--brand-white) 0%, var(--brand-canvas) 100%);
+
+  /* Border Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+
+  /* Transitions */
+  --transition-fast: 150ms ease-in-out;
+  --transition-base: 200ms ease-in-out;
+  --transition-slow: 300ms ease-in-out;
+  --transition-bounce: 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Dark Theme Variables */
+:root[data-theme='dark'],
+.dark {
+  --app-canvas: #020323;
+  --bg-sidebar: #050619;
+  --bg-main: #08091f;
+  --bg-card: #0b0d24;
+  --bg-popover: #0b0d24;
+  --bg-input: #08091f;
+  --hover-bg: rgba(255, 255, 255, 0.07);
+  --active-bg: rgba(255, 255, 255, 0.1);
+  --glass-bg: rgba(8, 9, 31, 0.92);
+  --overlay-bg: rgba(0, 0, 0, 0.56);
+
+  --surface-primary: var(--bg-card);
+  --surface-secondary: var(--app-canvas);
+  --surface-tertiary: var(--hover-bg);
+  --surface-overlay: rgba(2, 3, 35, 0.95);
+
+  --border-default: rgba(255, 255, 255, 0.12);
+  --border-light: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.18);
+  --border-hover: rgba(255, 255, 255, 0.32);
+  --card-border: rgba(255, 255, 255, 0.12);
+  --border-color: rgba(255, 255, 255, 0.1);
+  --focus-border: rgba(255, 255, 255, 0.28);
+  --focus-ring: 0 0 0 3px rgba(255, 255, 255, 0.08);
+
+  --text-primary: var(--brand-white);
+  --text-secondary: rgba(255, 255, 255, 0.72);
+  --text-muted: rgba(255, 255, 255, 0.5);
+  --text-inverse: var(--brand-primary);
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.28);
+  --shadow-base: 0 1px 3px 0 rgba(0, 0, 0, 0.34), 0 1px 2px 0 rgba(0, 0, 0, 0.28);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.28);
+  --shadow-card: 0 18px 46px rgba(0, 0, 0, 0.34);
+
+  --gradient-surface: linear-gradient(135deg, var(--brand-primary) 0%, #11142f 100%);
+  --gradient-header: linear-gradient(180deg, #11142f 0%, var(--brand-primary) 100%);
+}
+
+/* Base styles para Flat Design */
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--app-canvas);
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+.agentive-app-shell {
+  min-height: 100vh;
+  background: var(--app-canvas);
+  color: var(--text-primary);
+}
+
+.agentive-app-main,
+.agentive-mobile-main {
+  background: var(--app-canvas);
+  color: var(--text-primary);
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+  background-color: var(--surface-tertiary);
+  padding: 0.125rem 0.25rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.875em;
+}
+
+/* Flat Design Components */
+.flat-card {
+  background-color: var(--surface-primary);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-flat);
+  border-radius: var(--radius-lg);
+  transition: all var(--transition-base);
+}
+
+.flat-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-flat-md);
+}
+
+.flat-button-primary {
+  background-color: var(--brand-primary);
+  color: var(--brand-white);
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  transition: all var(--transition-base);
+  border: none;
+  cursor: pointer;
+}
+
+.flat-button-primary:hover {
+  background-color: var(--brand-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-flat-md);
+}
+
+.flat-button-secondary {
+  background-color: var(--surface-primary);
+  color: var(--text-primary);
+  border: 2px solid var(--border-default);
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  transition: all var(--transition-base);
+  cursor: pointer;
+}
+
+.flat-button-secondary:hover {
+  background-color: var(--surface-secondary);
+  border-color: var(--border-hover);
+}
+
+.flat-input {
+  background-color: var(--surface-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  transition: all var(--transition-base);
+  outline: none;
+}
+
+.flat-input:focus {
+  border-color: var(--border-focus);
+  box-shadow: var(--focus-ring, 0 0 0 3px rgba(2, 3, 35, 0.1));
+}
+
+.flat-input.error {
+  border-color: var(--error);
+}
+
+.flat-input.error:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+/* Utility classes para Flat Design */
+.transition-flat {
+  transition: all var(--transition-base);
+}
+
+.text-flat-primary {
+  color: var(--text-primary);
+}
+
+.text-flat-secondary {
+  color: var(--text-secondary);
+}
+
+.text-flat-muted {
+  color: var(--text-muted);
+}
+
+.bg-flat-primary {
+  background-color: var(--surface-primary);
+}
+
+.bg-flat-secondary {
+  background-color: var(--surface-secondary);
+}
+
+.border-flat {
+  border: 1px solid var(--border-default);
+}
+
+.border-flat-focus {
+  border-color: var(--border-focus);
+}
+
+.shadow-flat {
+  box-shadow: var(--shadow-flat);
+}
+
+.shadow-flat-md {
+  box-shadow: var(--shadow-flat-md);
+}
+
+/* Scrollbar Flat Design */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Focus visible para accessibility */
+.flat-button:focus-visible,
+.flat-input:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}

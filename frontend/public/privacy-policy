@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Politica de Privacidade - SUA_EMPRESA</title>
+    <meta
+      name="description"
+      content="Politica de Privacidade da SUA_EMPRESA, incluindo uso de dados da integracao com Google Agenda."
+    />
+    <style>
+      :root {
+        font-family: Inter, Arial, sans-serif;
+        color: #172033;
+        background: #f6f8fb;
+      }
+      body {
+        margin: 0;
+        padding: 32px;
+      }
+      main {
+        max-width: 900px;
+        margin: 0 auto;
+        background: #fff;
+        border: 1px solid #dfe6ef;
+        border-radius: 16px;
+        padding: 36px;
+      }
+      h1 {
+        font-size: 32px;
+      }
+      h2 {
+        margin-top: 30px;
+        font-size: 20px;
+      }
+      p,
+      li {
+        font-size: 16px;
+        line-height: 1.7;
+      }
+      a {
+        color: #1677b9;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p><a href="/oauth-home">Voltar para a pagina inicial</a></p>
+      <h1>Politica de Privacidade da SUA_EMPRESA</h1>
+      <p>Ultima atualizacao: 8 de maio de 2026.</p>
+
+      <h2>1. Informacoes que coletamos</h2>
+      <p>
+        Coletamos dados fornecidos por usuarios da plataforma, como informacoes
+        de conta, contatos, mensagens, configuracoes operacionais e dados
+        necessarios para executar automacoes e agendamentos.
+      </p>
+
+      <h2>2. Dados do Google Agenda</h2>
+      <p>
+        Quando o usuario conecta uma conta Google, a SUA_EMPRESA solicita acesso ao
+        Google Agenda para listar agendas, consultar disponibilidade e gerenciar
+        eventos de agendamento escolhidos ou criados pelo usuario.
+      </p>
+      <p>
+        Esses dados sao usados exclusivamente para oferecer a funcionalidade de
+        agenda dentro da SUA_EMPRESA. Nao vendemos dados do Google Agenda e nao os
+        usamos para publicidade.
+      </p>
+
+      <h2>3. Armazenamento e seguranca</h2>
+      <p>
+        Tokens de acesso e atualizacao podem ser armazenados para manter a
+        integracao funcionando. Aplicamos controles tecnicos e organizacionais
+        para proteger esses dados contra acesso indevido.
+      </p>
+
+      <h2>4. Compartilhamento</h2>
+      <p>
+        Podemos compartilhar dados apenas com provedores essenciais para operar
+        a plataforma, cumprir obrigacoes legais ou atender instrucoes do proprio
+        cliente. Nao vendemos informacoes pessoais.
+      </p>
+
+      <h2>5. Controle do usuario</h2>
+      <p>
+        O usuario pode desconectar a integracao com Google Agenda dentro da
+        SUA_EMPRESA ou revogar o acesso diretamente na conta Google.
+      </p>
+
+      <h2>6. Contato</h2>
+      <p>
+        Para duvidas sobre privacidade, entre em contato pelo e-mail
+        <a href="mailto:suporte@seu-dominio.com">suporte@seu-dominio.com</a>.
+      </p>
+    </main>
+  </body>
+</html>

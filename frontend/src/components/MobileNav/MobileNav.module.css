@@ -1,0 +1,123 @@
+.navContainer {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  z-index: 50;
+}
+
+.glassContainer {
+  display: flex;
+  max-width: 28rem;
+  margin: 0 auto;
+  align-items: center;
+  gap: 5px;
+  border-radius: 20px;
+  border: 1px solid var(--border-color, #f0f0f0);
+  background-color: var(--glass-bg, rgba(251, 251, 252, 0.94));
+  padding: 7px;
+  box-shadow: var(--shadow-card, 0 18px 45px rgba(2, 3, 35, 0.14));
+  backdrop-filter: blur(22px);
+}
+
+.navItem {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  padding: 8px 5px;
+  text-align: center;
+  text-decoration: none;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.navItemActive {
+  border-color: var(--border-color, rgba(2, 3, 35, 0.08));
+  background-color: var(--bg-card, #ffffff);
+  color: var(--text-primary, #020323);
+  box-shadow: var(--shadow-sm, 0 8px 22px rgba(2, 3, 35, 0.08));
+}
+
+.navItemInactive {
+  color: var(--text-secondary, #71717a);
+}
+
+.navItemInactive:hover {
+  border-color: var(--border-color, rgba(2, 3, 35, 0.05));
+  background-color: var(--hover-bg, #f3f4f6);
+  color: var(--text-primary, #111111);
+  transform: translateY(-1px);
+}
+
+.iconContainer {
+  position: relative;
+  display: flex;
+}
+
+.icon {
+  height: 20px;
+  width: 20px;
+}
+
+.statusBadge {
+  position: absolute;
+  right: -4px;
+  top: -4px;
+  height: 8px;
+  width: 8px;
+  border-radius: 9999px;
+  border: 1px solid var(--bg-card, #ffffff);
+  background-color: var(--accent-green, #22c55e);
+}
+
+.label {
+  max-width: 100%;
+  overflow: hidden;
+  color: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logoutButton {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--text-secondary, #71717a);
+  cursor: pointer;
+  padding: 8px 5px;
+  text-align: center;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.logoutButton:hover {
+  border-color: color-mix(in srgb, var(--accent-red, #ef4444) 24%, transparent);
+  background-color: color-mix(in srgb, var(--accent-red, #ef4444) 10%, transparent);
+  color: var(--accent-red, #ef4444);
+  transform: translateY(-1px);
+}

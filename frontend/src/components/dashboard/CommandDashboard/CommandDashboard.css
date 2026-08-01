@@ -1,0 +1,1089 @@
+.command-dashboard {
+  --cmd-brand: #020323;
+  --cmd-brand-soft: rgba(2, 3, 35, 0.64);
+  --cmd-brand-muted: rgba(2, 3, 35, 0.46);
+  --cmd-brand-faint: rgba(2, 3, 35, 0.28);
+  --cmd-canvas: #f7f7f7;
+  --cmd-surface: #ffffff;
+  --cmd-surface-muted: #f1f3f5;
+  --cmd-surface-raised: #ffffff;
+  --cmd-border: rgba(2, 3, 35, 0.1);
+  --cmd-border-strong: rgba(2, 3, 35, 0.18);
+  --cmd-hover: rgba(2, 3, 35, 0.045);
+  --cmd-focus: rgba(37, 99, 235, 0.26);
+  --cmd-success: #0f766e;
+  --cmd-success-bg: rgba(15, 118, 110, 0.1);
+  --cmd-warning: #b45309;
+  --cmd-warning-bg: rgba(180, 83, 9, 0.11);
+  --cmd-danger: #dc2626;
+  --cmd-danger-bg: rgba(220, 38, 38, 0.1);
+  --cmd-info: #2563eb;
+  --cmd-info-bg: rgba(37, 99, 235, 0.1);
+  --cmd-radius-sm: 6px;
+  --cmd-radius-md: 8px;
+  --cmd-radius-lg: 12px;
+  --cmd-radius-xl: 16px;
+  --cmd-shadow-sm: 0 1px 2px rgba(2, 3, 35, 0.04);
+  --cmd-shadow-panel: 0 10px 30px rgba(2, 3, 35, 0.055);
+  min-height: 100vh;
+  padding: 20px 24px calc(96px + env(safe-area-inset-bottom));
+  background: var(--cmd-canvas);
+  color: var(--cmd-brand);
+  font-family: var(--font-family, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+}
+
+.command-dashboard.command-dashboard--dark {
+  --cmd-brand: #f7f7f7;
+  --cmd-brand-soft: rgba(247, 247, 247, 0.68);
+  --cmd-brand-muted: rgba(247, 247, 247, 0.5);
+  --cmd-brand-faint: rgba(247, 247, 247, 0.34);
+  --cmd-canvas: #020323;
+  --cmd-surface: rgba(255, 255, 255, 0.06);
+  --cmd-surface-muted: rgba(255, 255, 255, 0.08);
+  --cmd-surface-raised: #08092f;
+  --cmd-border: rgba(255, 255, 255, 0.11);
+  --cmd-border-strong: rgba(255, 255, 255, 0.18);
+  --cmd-hover: rgba(255, 255, 255, 0.08);
+  --cmd-shadow-panel: 0 18px 52px rgba(0, 0, 0, 0.22);
+}
+
+.command-dashboard *,
+.command-dashboard *::before,
+.command-dashboard *::after {
+  box-sizing: border-box;
+}
+
+.command-dashboard button,
+.command-dashboard input,
+.command-dashboard select {
+  font: inherit;
+}
+
+.command-dashboard-shell {
+  display: flex;
+  width: 100%;
+  max-width: 1500px;
+  margin: 0 auto;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.command-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: start;
+}
+
+.command-eyebrow {
+  margin: 0 0 6px;
+  color: var(--cmd-brand-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.command-title-row {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.command-title {
+  margin: 0;
+  color: var(--cmd-brand);
+  font-size: clamp(24px, 3vw, 30px);
+  font-weight: 650;
+  letter-spacing: 0;
+  line-height: 1.12;
+}
+
+.command-description {
+  max-width: 760px;
+  margin: 8px 0 0;
+  color: var(--cmd-brand-soft);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.command-toolbar-actions {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.command-badge {
+  display: inline-flex;
+  min-height: 28px;
+  max-width: 100%;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--cmd-border);
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: var(--cmd-surface);
+  color: var(--cmd-brand-soft);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.command-badge-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--cmd-success);
+}
+
+.command-button,
+.command-icon-button,
+.command-select,
+.command-date-trigger,
+.command-date-input {
+  border: 1px solid var(--cmd-border);
+  background: var(--cmd-surface);
+  color: var(--cmd-brand);
+  outline: none;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease;
+}
+
+.command-button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--cmd-radius-lg);
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.command-button--primary {
+  border-color: transparent;
+  background: #020323;
+  color: #ffffff;
+}
+
+.command-dashboard--dark .command-button--primary {
+  background: #ffffff;
+  color: #020323;
+}
+
+.command-button--ghost {
+  background: transparent;
+}
+
+.command-button:hover,
+.command-icon-button:hover,
+.command-date-trigger:hover,
+.command-select:hover {
+  background: var(--cmd-hover);
+  border-color: var(--cmd-border-strong);
+}
+
+.command-button--primary:hover {
+  background: #11143a;
+}
+
+.command-dashboard--dark .command-button--primary:hover {
+  background: #eceef4;
+}
+
+.command-button:focus-visible,
+.command-icon-button:focus-visible,
+.command-select:focus-visible,
+.command-date-trigger:focus-visible,
+.command-date-input:focus-visible {
+  border-color: var(--cmd-info);
+  box-shadow: 0 0 0 3px var(--cmd-focus);
+}
+
+.command-icon-button {
+  position: relative;
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--cmd-radius-lg);
+  cursor: pointer;
+}
+
+.command-icon-button svg,
+.command-button svg,
+.command-date-trigger svg,
+.command-panel-title svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.command-icon-button[data-tooltip]::after {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 40;
+  max-width: 180px;
+  border: 1px solid var(--cmd-border);
+  border-radius: var(--cmd-radius-md);
+  padding: 6px 8px;
+  background: var(--cmd-surface-raised);
+  box-shadow: var(--cmd-shadow-panel);
+  color: var(--cmd-brand);
+  content: attr(data-tooltip);
+  font-size: 12px;
+  line-height: 1.2;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+  white-space: nowrap;
+}
+
+.command-icon-button[data-tooltip]:hover::after,
+.command-icon-button[data-tooltip]:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.command-date-picker {
+  position: relative;
+}
+
+.command-date-trigger {
+  display: inline-flex;
+  min-height: 40px;
+  max-width: min(300px, 100%);
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-radius: var(--cmd-radius-lg);
+  padding: 9px 11px;
+  color: var(--cmd-brand);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.command-date-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-date-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 50;
+  width: min(332px, calc(100vw - 32px));
+  border: 1px solid var(--cmd-border);
+  border-radius: var(--cmd-radius-xl);
+  padding: 14px;
+  background: var(--cmd-surface-raised);
+  box-shadow: var(--cmd-shadow-panel);
+}
+
+.command-date-presets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.command-date-custom {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--cmd-border);
+}
+
+.command-field {
+  display: grid;
+  gap: 6px;
+}
+
+.command-label {
+  color: var(--cmd-brand-muted);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.command-date-input,
+.command-select {
+  min-height: 40px;
+  width: 100%;
+  border-radius: var(--cmd-radius-lg);
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.command-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid var(--cmd-danger-bg);
+  border-radius: var(--cmd-radius-xl);
+  padding: 12px 14px;
+  background: var(--cmd-danger-bg);
+  color: var(--cmd-danger);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.command-alert svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.command-filter-bar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  border: 1px solid var(--cmd-border);
+  border-radius: var(--cmd-radius-xl);
+  padding: 14px;
+  background: var(--cmd-surface);
+  box-shadow: var(--cmd-shadow-sm);
+}
+
+.command-performance {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(330px, 0.75fr);
+  overflow: hidden;
+  border: 1px solid var(--cmd-border);
+  border-radius: 18px;
+  background: var(--cmd-surface);
+  box-shadow: var(--cmd-shadow-panel);
+}
+
+.command-performance-main {
+  padding: 22px;
+}
+
+.command-performance-meta {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.command-revenue {
+  margin: 18px 0 0;
+  color: var(--cmd-brand);
+  font-size: clamp(34px, 5.2vw, 56px);
+  font-weight: 650;
+  letter-spacing: 0;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.command-revenue-subtitle {
+  max-width: 620px;
+  margin: 12px 0 0;
+  color: var(--cmd-brand-soft);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.command-performance-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  border-top: 1px solid var(--cmd-border);
+  margin-top: 22px;
+  padding-top: 18px;
+}
+
+.command-mini-stat {
+  min-width: 0;
+  padding-right: 14px;
+}
+
+.command-mini-stat + .command-mini-stat {
+  border-left: 1px solid var(--cmd-border);
+  padding-left: 14px;
+}
+
+.command-mini-stat span,
+.command-kpi-label,
+.command-table-head,
+.command-panel-kicker,
+.command-progress-note,
+.command-timeline-time {
+  color: var(--cmd-brand-muted);
+}
+
+.command-mini-stat span {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.command-mini-stat strong {
+  display: block;
+  min-width: 0;
+  margin-top: 6px;
+  overflow: hidden;
+  color: var(--cmd-brand);
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-funnel-snapshot {
+  min-width: 0;
+  border-left: 1px solid var(--cmd-border);
+  padding: 22px;
+  background: linear-gradient(180deg, var(--cmd-surface-muted), transparent 70%);
+}
+
+.command-snapshot-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.command-snapshot-header h2 {
+  margin: 0;
+  color: var(--cmd-brand);
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.command-snapshot-header p {
+  margin: 4px 0 0;
+  color: var(--cmd-brand-soft);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.command-snapshot-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--cmd-border);
+  border-radius: var(--cmd-radius-lg);
+  background: var(--cmd-surface);
+}
+
+.command-snapshot-icon svg {
+  width: 17px;
+  height: 17px;
+  color: var(--cmd-brand-muted);
+}
+
+.command-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.command-kpi-card {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--cmd-border);
+  border-radius: var(--cmd-radius-xl);
+  padding: 15px;
+  background: var(--cmd-surface);
+  box-shadow: var(--cmd-shadow-sm);
+}
+
+.command-kpi-card::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--kpi-accent, var(--cmd-info));
+  content: "";
+}
+
+.command-kpi-top {
+  display: flex;
+  min-width: 0;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.command-kpi-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: var(--cmd-radius-lg);
+  background: color-mix(in srgb, var(--kpi-accent, var(--cmd-info)) 10%, transparent);
+  color: var(--kpi-accent, var(--cmd-info));
+}
+
+.command-kpi-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.command-kpi-label {
+  display: block;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.command-kpi-value {
+  margin-top: 8px;
+  overflow: hidden;
+  color: var(--cmd-brand);
+  font-size: 24px;
+  font-weight: 650;
+  letter-spacing: 0;
+  line-height: 1.08;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-kpi-footer {
+  display: flex;
+  min-height: 24px;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+  margin-top: 12px;
+  color: var(--cmd-brand-soft);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.command-kpi-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 7px;
+  background: color-mix(in srgb, var(--kpi-accent, var(--cmd-info)) 11%, transparent);
+  color: var(--kpi-accent, var(--cmd-info));
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.command-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
+  gap: 18px;
+  align-items: start;
+}
+
+.command-stack {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.command-panel {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--cmd-border);
+  border-radius: var(--cmd-radius-xl);
+  background: var(--cmd-surface);
+  box-shadow: var(--cmd-shadow-sm);
+}
+
+.command-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: 1px solid var(--cmd-border);
+  padding: 15px 16px;
+}
+
+.command-panel-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--cmd-brand);
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.command-panel-kicker {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.command-panel-body {
+  padding: 16px;
+}
+
+.command-chart {
+  width: 100%;
+  height: 320px;
+}
+
+.command-chart-footer {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.command-compact-stat {
+  min-width: 0;
+  border: 1px solid var(--cmd-border);
+  border-radius: var(--cmd-radius-lg);
+  padding: 10px;
+  background: var(--cmd-surface-muted);
+}
+
+.command-compact-stat span {
+  display: block;
+  color: var(--cmd-brand-muted);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.command-compact-stat strong {
+  display: block;
+  margin-top: 5px;
+  overflow: hidden;
+  color: var(--cmd-brand);
+  font-size: 14px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-table {
+  overflow: hidden;
+  border: 1px solid var(--cmd-border);
+  border-radius: var(--cmd-radius-lg);
+}
+
+.command-table-row,
+.command-table-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 78px 74px;
+  gap: 10px;
+  align-items: center;
+}
+
+.command-table-head {
+  padding: 9px 12px;
+  background: var(--cmd-surface-muted);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.command-table-row {
+  padding: 12px;
+}
+
+.command-table-row + .command-table-row {
+  border-top: 1px solid var(--cmd-border);
+}
+
+.command-row-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.command-row-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--row-color, var(--cmd-info));
+}
+
+.command-row-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--cmd-brand);
+  font-size: 13px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-row-value {
+  color: var(--cmd-brand);
+  font-size: 13px;
+  font-weight: 650;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.command-row-muted {
+  color: var(--cmd-brand-soft);
+  font-size: 13px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.command-progress {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--cmd-hover);
+}
+
+.command-progress-fill {
+  height: 100%;
+  min-width: 2px;
+  border-radius: inherit;
+  background: var(--row-color, var(--cmd-info));
+}
+
+.command-progress-note {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.command-source-summary {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.command-source-list {
+  display: grid;
+  gap: 11px;
+}
+
+.command-source-item {
+  display: grid;
+  gap: 7px;
+}
+
+.command-source-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.command-source-name {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  color: var(--cmd-brand);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.command-source-name span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-source-count {
+  flex: 0 0 auto;
+  color: var(--cmd-brand-soft);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.command-forecast-list {
+  display: grid;
+  gap: 14px;
+}
+
+.command-forecast-row {
+  display: grid;
+  gap: 8px;
+}
+
+.command-forecast-line {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.command-forecast-name {
+  min-width: 0;
+  color: var(--cmd-brand);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.command-forecast-values {
+  flex: 0 0 auto;
+  color: var(--cmd-brand-soft);
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: right;
+}
+
+.command-timeline {
+  display: grid;
+  gap: 10px;
+}
+
+.command-timeline-item {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.command-timeline-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: var(--cmd-radius-lg);
+  background: var(--cmd-info-bg);
+  color: var(--cmd-info);
+}
+
+.command-timeline-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.command-timeline-content {
+  min-width: 0;
+  border-bottom: 1px solid var(--cmd-border);
+  padding-bottom: 10px;
+}
+
+.command-timeline-item:last-child .command-timeline-content {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.command-timeline-heading {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.command-timeline-title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--cmd-brand);
+  font-size: 13px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-timeline-time {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.command-timeline-description {
+  display: -webkit-box;
+  margin: 4px 0 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--cmd-brand-soft);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.command-empty {
+  display: grid;
+  min-height: 144px;
+  place-items: center;
+  border: 1px dashed var(--cmd-border-strong);
+  border-radius: var(--cmd-radius-lg);
+  padding: 18px;
+  color: var(--cmd-brand-soft);
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.command-loading-page,
+.command-error-page {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+  background: var(--cmd-canvas, #f7f7f7);
+  color: var(--cmd-brand, #020323);
+}
+
+.command-loading-box,
+.command-error-box {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  max-width: 420px;
+  text-align: center;
+}
+
+.command-spinner {
+  width: 42px;
+  height: 42px;
+  border: 3px solid rgba(2, 3, 35, 0.12);
+  border-top-color: #020323;
+  border-radius: 999px;
+  animation: command-spin 900ms linear infinite;
+}
+
+@keyframes command-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 1180px) {
+  .command-performance,
+  .command-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .command-funnel-snapshot {
+    border-left: 0;
+    border-top: 1px solid var(--cmd-border);
+  }
+
+  .command-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .command-dashboard {
+    padding: 16px 14px calc(118px + env(safe-area-inset-bottom));
+  }
+
+  .command-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .command-toolbar-actions {
+    justify-content: flex-start;
+  }
+
+  .command-date-picker,
+  .command-date-trigger {
+    width: 100%;
+  }
+
+  .command-date-trigger {
+    max-width: none;
+  }
+
+  .command-filter-bar,
+  .command-performance-stats,
+  .command-chart-footer,
+  .command-source-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .command-mini-stat + .command-mini-stat {
+    border-left: 0;
+    border-top: 1px solid var(--cmd-border);
+    padding-top: 12px;
+    padding-left: 0;
+  }
+
+  .command-mini-stat {
+    padding-right: 0;
+  }
+
+  .command-performance-main,
+  .command-funnel-snapshot,
+  .command-panel-body {
+    padding: 16px;
+  }
+
+  .command-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .command-table-row,
+  .command-table-head {
+    grid-template-columns: minmax(0, 1fr) 64px 58px;
+    gap: 8px;
+  }
+
+  .command-date-custom {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .command-toolbar-actions {
+    display: grid;
+    grid-template-columns: 1fr 40px 40px 40px;
+    width: 100%;
+  }
+
+  .command-button span {
+    display: none;
+  }
+
+  .command-revenue {
+    font-size: 34px;
+  }
+
+  .command-panel-header {
+    flex-direction: column;
+  }
+
+  .command-chart {
+    height: 260px;
+  }
+}

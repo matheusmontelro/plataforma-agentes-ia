@@ -1,0 +1,448 @@
+.crm-workspace,
+.crm-lead-inspector-root,
+.crm-work-modal {
+  --crm-modern-canvas: #f7f7f7;
+  --crm-modern-surface: #ffffff;
+  --crm-modern-surface-muted: #fafafa;
+  --crm-modern-ink: #020323;
+  --crm-modern-ink-soft: rgba(2, 3, 35, 0.66);
+  --crm-modern-ink-muted: rgba(2, 3, 35, 0.52);
+  --crm-modern-border: rgba(2, 3, 35, 0.1);
+  --crm-modern-border-strong: rgba(2, 3, 35, 0.18);
+  --crm-modern-hover: rgba(2, 3, 35, 0.04);
+  --crm-modern-signal: #0f766e;
+  --crm-modern-signal-soft: rgba(15, 118, 110, 0.1);
+  --crm-modern-danger: #dc2626;
+  --crm-modern-warning: #b45309;
+  --crm-modern-focus: 0 0 0 3px rgba(2, 3, 35, 0.12);
+  --crm-modern-shadow: 0 1px 2px rgba(2, 3, 35, 0.025);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.crm-workspace--dark,
+.crm-lead-inspector-root--dark,
+.crm-work-modal--dark {
+  --crm-modern-canvas: #020323;
+  --crm-modern-surface: #08091f;
+  --crm-modern-surface-muted: #0b0d24;
+  --crm-modern-ink: #f7f7f7;
+  --crm-modern-ink-soft: rgba(247, 247, 247, 0.72);
+  --crm-modern-ink-muted: rgba(247, 247, 247, 0.56);
+  --crm-modern-border: rgba(255, 255, 255, 0.12);
+  --crm-modern-border-strong: rgba(255, 255, 255, 0.22);
+  --crm-modern-hover: rgba(255, 255, 255, 0.06);
+  --crm-modern-signal: #2dd4bf;
+  --crm-modern-signal-soft: rgba(45, 212, 191, 0.14);
+  --crm-modern-danger: #f87171;
+  --crm-modern-warning: #fbbf24;
+  --crm-modern-focus: 0 0 0 3px rgba(247, 247, 247, 0.16);
+  --crm-modern-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.crm-modern-panel {
+  min-width: 0;
+  border: 1px solid var(--crm-modern-border) !important;
+  border-radius: 11px !important;
+  background: var(--crm-modern-surface) !important;
+  color: var(--crm-modern-ink);
+  box-shadow: var(--crm-modern-shadow) !important;
+}
+
+.crm-modern-control,
+.crm-modern-icon-control {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--crm-modern-border) !important;
+  border-radius: 8px !important;
+  background: var(--crm-modern-surface) !important;
+  color: var(--crm-modern-ink-soft) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  line-height: 1;
+  outline: none;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+}
+
+.crm-modern-control {
+  padding: 7px 10px !important;
+}
+
+.crm-modern-control:hover,
+.crm-modern-icon-control:hover {
+  border-color: var(--crm-modern-border-strong) !important;
+  background: var(--crm-modern-hover) !important;
+  color: var(--crm-modern-ink) !important;
+}
+
+.crm-modern-control:focus-visible,
+.crm-modern-icon-control:focus-visible,
+.crm-modern-input:focus-visible {
+  border-color: var(--crm-modern-border-strong) !important;
+  box-shadow: var(--crm-modern-focus) !important;
+  outline: none !important;
+}
+
+.crm-modern-control:disabled,
+.crm-modern-icon-control:disabled,
+.crm-modern-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.45 !important;
+}
+
+.crm-modern-control svg,
+.crm-modern-icon-control svg {
+  width: 14px;
+  height: 14px;
+}
+
+.crm-modern-control--primary {
+  border-color: var(--crm-modern-ink) !important;
+  background: var(--crm-modern-ink) !important;
+  color: var(--crm-modern-surface) !important;
+  font-weight: 600 !important;
+}
+
+.crm-modern-control--primary:hover {
+  border-color: var(--crm-modern-ink) !important;
+  background: color-mix(in srgb, var(--crm-modern-ink) 88%, var(--crm-modern-surface)) !important;
+  color: var(--crm-modern-surface) !important;
+}
+
+.crm-modern-icon-control {
+  width: 34px;
+  min-width: 34px;
+  padding: 0 !important;
+}
+
+.crm-modern-icon-control.crm-action-icon {
+  width: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  height: 28px;
+  border-color: transparent !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+}
+
+.crm-modern-icon-control.crm-action-icon:hover {
+  border-color: var(--crm-modern-border) !important;
+  background: var(--crm-modern-surface) !important;
+}
+
+.crm-modern-icon-control.crm-action-icon.crm-modern-icon-control--success:hover {
+  border-color: color-mix(in srgb, var(--crm-modern-signal) 22%, var(--crm-modern-border)) !important;
+  background: var(--crm-modern-signal-soft) !important;
+}
+
+.crm-modern-icon-control.crm-action-icon.crm-modern-icon-control--danger:hover {
+  border-color: color-mix(in srgb, var(--crm-modern-danger) 24%, var(--crm-modern-border)) !important;
+  background: color-mix(in srgb, var(--crm-modern-danger) 8%, transparent) !important;
+}
+
+.crm-modern-icon-control--primary {
+  color: var(--crm-modern-ink) !important;
+}
+
+.crm-modern-icon-control--success {
+  color: var(--crm-modern-signal) !important;
+}
+
+.crm-modern-icon-control--warning {
+  color: var(--crm-modern-warning) !important;
+}
+
+.crm-modern-icon-control--danger {
+  color: var(--crm-modern-danger) !important;
+}
+
+.crm-modern-input {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--crm-modern-border) !important;
+  border-radius: 8px !important;
+  padding: 8px 10px !important;
+  background: var(--crm-modern-surface) !important;
+  color: var(--crm-modern-ink) !important;
+  font-size: 12px !important;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.crm-modern-input::placeholder {
+  color: var(--crm-modern-ink-muted);
+}
+
+.crm-modern-label {
+  display: block;
+  margin: 0 0 6px;
+  color: var(--crm-modern-ink-soft) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+}
+
+.crm-modern-muted {
+  color: var(--crm-modern-ink-muted) !important;
+}
+
+.crm-modern-subtle {
+  border: 1px solid var(--crm-modern-border) !important;
+  border-radius: 8px !important;
+  background: var(--crm-modern-surface-muted) !important;
+  color: var(--crm-modern-ink-soft) !important;
+  box-shadow: none !important;
+}
+
+.crm-loading-row {
+  min-height: 46px;
+  padding: 10px 12px;
+  color: var(--crm-modern-ink-soft);
+}
+
+.crm-modern-badge {
+  display: inline-flex;
+  min-height: 22px;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--crm-modern-border) !important;
+  border-radius: 6px !important;
+  padding: 3px 6px !important;
+  background: var(--crm-modern-surface-muted) !important;
+  color: var(--crm-modern-ink-muted) !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  line-height: 1;
+}
+
+.crm-modern-badge--active {
+  border-color: color-mix(in srgb, var(--crm-modern-signal) 28%, var(--crm-modern-border)) !important;
+  background: var(--crm-modern-signal-soft) !important;
+  color: var(--crm-modern-signal) !important;
+}
+
+.crm-modern-empty {
+  display: flex;
+  min-height: 76px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px;
+  color: var(--crm-modern-ink-muted);
+  text-align: left;
+}
+
+.crm-modern-empty__icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--crm-modern-border);
+  border-radius: 8px;
+  background: var(--crm-modern-surface-muted);
+  color: var(--crm-modern-ink-soft);
+}
+
+.crm-modern-empty__icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.crm-modern-empty__copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.crm-modern-empty__copy strong {
+  color: var(--crm-modern-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.crm-modern-empty__copy span {
+  max-width: 360px;
+  font-size: 11px;
+}
+
+.crm-modern-empty__action {
+  margin-left: 6px;
+}
+
+.crm-modern-alert {
+  border-radius: 9px !important;
+  padding: 10px 12px !important;
+  box-shadow: none !important;
+  font-size: 12px !important;
+}
+
+.crm-task-preview {
+  display: grid;
+  gap: 7px;
+  border-top: 1px solid var(--crm-modern-border);
+  padding-top: 8px;
+}
+
+.crm-task-preview__main {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+}
+
+.crm-task-preview__icon {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 6px;
+  background: var(--crm-modern-surface-muted);
+  color: var(--crm-modern-ink-soft);
+}
+
+.crm-task-preview__title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--crm-modern-ink-soft);
+  font-size: 11px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crm-task-preview__time {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--crm-modern-ink-muted);
+  font-size: 10px;
+}
+
+.crm-modern-modal-root {
+  background: rgba(2, 3, 35, 0.3) !important;
+  backdrop-filter: blur(2px) !important;
+}
+
+.crm-modern-modal {
+  border: 1px solid var(--crm-modern-border) !important;
+  border-radius: 11px !important;
+  background: var(--crm-modern-surface) !important;
+  color: var(--crm-modern-ink) !important;
+  box-shadow: 0 18px 48px rgba(2, 3, 35, 0.16) !important;
+}
+
+.crm-modern-modal__header {
+  margin: 0 !important;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--crm-modern-border);
+}
+
+.crm-modern-modal__body {
+  padding: 14px 16px;
+}
+
+.crm-modern-modal__footer {
+  margin: 0 !important;
+  padding: 12px 16px;
+  border-top: 1px solid var(--crm-modern-border);
+  background: var(--crm-modern-surface-muted);
+}
+
+.crm-confirm-modal {
+  padding: 0 !important;
+}
+
+.crm-confirm-modal__header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--crm-modern-border);
+}
+
+.crm-confirm-modal__header h3 {
+  color: var(--crm-modern-ink);
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+
+.crm-confirm-modal__header h3 + div {
+  color: var(--crm-modern-ink-muted) !important;
+  font-size: 11px !important;
+}
+
+.crm-confirm-modal__icon {
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 8px !important;
+}
+
+.crm-confirm-modal__icon svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+.crm-confirm-modal__content {
+  margin: 12px 16px 0 !important;
+  border-color: var(--crm-modern-border) !important;
+  border-radius: 8px !important;
+  padding: 10px !important;
+  background: var(--crm-modern-surface-muted) !important;
+  color: var(--crm-modern-ink-soft) !important;
+}
+
+.crm-confirm-modal__footer {
+  margin-top: 12px !important;
+  padding: 12px 16px;
+  border-top: 1px solid var(--crm-modern-border);
+  background: var(--crm-modern-surface-muted);
+}
+
+.crm-confirm-modal__confirm {
+  color: #ffffff !important;
+}
+
+.crm-confirm-modal__confirm--danger {
+  border-color: #dc2626 !important;
+  background: #dc2626 !important;
+}
+
+.crm-confirm-modal__confirm--warning {
+  border-color: #b45309 !important;
+  background: #b45309 !important;
+}
+
+.crm-confirm-modal__confirm--info {
+  border-color: var(--crm-modern-ink) !important;
+  background: var(--crm-modern-ink) !important;
+  color: var(--crm-modern-surface) !important;
+}
+
+@media (max-width: 520px) {
+  .crm-modern-modal {
+    width: 100% !important;
+    max-height: calc(100dvh - 16px) !important;
+    border-radius: 11px 11px 0 0 !important;
+  }
+
+  .crm-modern-empty {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .crm-modern-empty__action {
+    margin-left: 40px;
+  }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crm-modern-control,
+  .crm-modern-icon-control,
+  .crm-modern-input {
+    transition: none !important;
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "short_name": "SUA_EMPRESA",
+  "name": "SUA_EMPRESA - personalize este manifesto",
+  "icons": [
+    {
+      "src": "branding/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "branding/icon-white.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#020323",
+  "background_color": "#f7f7f7"
+}

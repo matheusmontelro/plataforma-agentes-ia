@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Termos de Uso - SUA_EMPRESA</title>
+    <meta name="description" content="Termos de Uso da plataforma SUA_EMPRESA." />
+    <style>
+      :root {
+        font-family: Inter, Arial, sans-serif;
+        color: #172033;
+        background: #f6f8fb;
+      }
+      body {
+        margin: 0;
+        padding: 32px;
+      }
+      main {
+        max-width: 900px;
+        margin: 0 auto;
+        background: #fff;
+        border: 1px solid #dfe6ef;
+        border-radius: 16px;
+        padding: 36px;
+      }
+      h1 {
+        font-size: 32px;
+      }
+      h2 {
+        margin-top: 30px;
+        font-size: 20px;
+      }
+      p,
+      li {
+        font-size: 16px;
+        line-height: 1.7;
+      }
+      a {
+        color: #1677b9;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p><a href="/oauth-home">Voltar para a pagina inicial</a></p>
+      <h1>Termos de Uso da SUA_EMPRESA</h1>
+      <p>Ultima atualizacao: 8 de maio de 2026.</p>
+
+      <h2>1. Uso da plataforma</h2>
+      <p>
+        A SUA_EMPRESA oferece recursos de atendimento, CRM, automacoes e
+        agendamento. O cliente e responsavel por usar a plataforma de acordo
+        com a lei, com estes termos e com as politicas dos servicos integrados.
+      </p>
+
+      <h2>2. Integracoes de terceiros</h2>
+      <p>
+        Ao conectar servicos como Google Agenda, o cliente autoriza a SUA_EMPRESA a
+        executar as acoes necessarias para a funcionalidade contratada, como
+        listar agendas, verificar disponibilidade e criar eventos.
+      </p>
+
+      <h2>3. Responsabilidades do cliente</h2>
+      <p>
+        O cliente deve manter suas credenciais seguras, revisar permissoes
+        concedidas e garantir que possui autorizacao para processar os dados
+        inseridos na plataforma.
+      </p>
+
+      <h2>4. Disponibilidade</h2>
+      <p>
+        Trabalhamos para manter a plataforma disponivel, mas podem ocorrer
+        interrupcoes por manutencao, incidentes tecnicos ou indisponibilidade de
+        servicos de terceiros.
+      </p>
+
+      <h2>5. Contato</h2>
+      <p>
+        Para duvidas sobre estes termos, entre em contato pelo e-mail
+        <a href="mailto:suporte@seu-dominio.com">suporte@seu-dominio.com</a>.
+      </p>
+    </main>
+  </body>
+</html>

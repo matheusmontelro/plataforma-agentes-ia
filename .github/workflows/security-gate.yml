@@ -1,0 +1,100 @@
+name: Public Release Gate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  repository-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Scan repository for secrets and unsafe frontend auth storage
+        run: python tools/security_check.py
+      - name: Compile backend Python
+        run: python -m compileall -q backend
+
+  database-bootstrap:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: plataforma_agentes_test
+          POSTGRES_USER: plataforma_agentes
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U plataforma_agentes -d plataforma_agentes_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql://plataforma_agentes@127.0.0.1:5432/plataforma_agentes_test
+      PYTHONPATH: .
+      BOOTSTRAP_PASSWORD: PublicValidationPassphrase123!
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install schema validation dependencies
+        run: >-
+          python -m pip install
+          alembic==1.14.0
+          SQLAlchemy==2.0.36
+          psycopg2-binary==2.9.10
+          python-dotenv==1.0.1
+          pydantic==2.10.3
+          email-validator==2.3.0
+          fastapi==0.115.6
+          python-jose==3.3.0
+          passlib==1.7.4
+          bcrypt==4.0.1
+      - name: Apply the single clean database baseline
+        run: |
+          test "$(python -m alembic -c backend/alembic.ini heads | wc -l)" -eq 1
+          python -m alembic -c backend/alembic.ini upgrade head
+          python -m alembic -c backend/alembic.ini current
+          python -m alembic -c backend/alembic.ini upgrade head
+          python -m alembic -c backend/alembic.ini check
+      - name: Bootstrap the first administrator
+        run: >-
+          python -m backend.scripts.bootstrap_admin
+          --email admin@example.com
+          --company-name "Empresa de Exemplo"
+          --document 00000000000000
+          --password-env BOOTSTRAP_PASSWORD
+      - name: Validate the public repository contract
+        run: bash tools/validate-public-release.sh
+
+  frontend-checks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Audit frontend dependencies
+        run: node ../tools/check-frontend-audit.mjs
+      - name: Type-check frontend
+        run: npm run typecheck

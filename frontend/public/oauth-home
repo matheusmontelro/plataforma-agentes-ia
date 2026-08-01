@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SUA_EMPRESA - Integracao com Google Agenda</title>
+    <meta
+      name="description"
+      content="SUA_EMPRESA ajuda empresas a automatizar atendimento, CRM e agendamentos. A integracao com Google Agenda permite consultar disponibilidade e criar eventos autorizados pelo cliente."
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, Arial, sans-serif;
+        color: #172033;
+        background: #f6f8fb;
+      }
+      body {
+        margin: 0;
+        padding: 32px;
+      }
+      main {
+        max-width: 860px;
+        margin: 0 auto;
+        background: #fff;
+        border: 1px solid #dfe6ef;
+        border-radius: 16px;
+        padding: 36px;
+        box-shadow: 0 12px 40px rgba(20, 37, 63, 0.08);
+      }
+      img {
+        height: 44px;
+        width: auto;
+      }
+      h1 {
+        margin: 28px 0 14px;
+        font-size: 34px;
+        line-height: 1.15;
+      }
+      h2 {
+        margin-top: 28px;
+        font-size: 20px;
+      }
+      p,
+      li {
+        font-size: 16px;
+        line-height: 1.7;
+      }
+      a {
+        color: #1677b9;
+      }
+      nav {
+        display: flex;
+        gap: 18px;
+        flex-wrap: wrap;
+        margin-top: 28px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/branding/logo-dark.svg" alt="SUA_EMPRESA" />
+      <h1>SUA_EMPRESA</h1>
+      <p>
+        A SUA_EMPRESA e uma plataforma SaaS para empresas que precisam centralizar
+        atendimento, CRM, automacoes e agendamentos. O aplicativo ajuda equipes
+        a organizar contatos, acompanhar conversas e criar compromissos com
+        menos trabalho manual.
+      </p>
+
+      <h2>Finalidade da integracao com Google Agenda</h2>
+      <p>
+        Quando um cliente conecta sua conta Google, a SUA_EMPRESA usa a permissao
+        concedida para listar as agendas disponiveis, permitir que o cliente
+        escolha ou crie uma agenda, consultar eventos para evitar conflitos de
+        horario e criar, atualizar ou remover eventos de agendamento gerados na
+        plataforma.
+      </p>
+
+      <h2>Uso dos dados do Google</h2>
+      <ul>
+        <li>Os dados sao usados somente para recursos de agenda solicitados pelo cliente.</li>
+        <li>A SUA_EMPRESA nao vende dados do Google Agenda.</li>
+        <li>O cliente pode desconectar a integracao a qualquer momento dentro da plataforma.</li>
+      </ul>
+
+      <nav aria-label="Links legais">
+        <a href="/privacy-policy">Politica de Privacidade</a>
+        <a href="/terms">Termos de Uso</a>
+        <a href="/">Acessar a plataforma</a>
+      </nav>
+    </main>
+  </body>
+</html>
