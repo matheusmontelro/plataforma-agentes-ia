@@ -41,17 +41,17 @@ def _post_for_operational_company(
     payload: Dict[str, Any],
     timeout: int,
 ):
-    """Serialize a WAHA side effect with refund offboarding for the company."""
+    """Serialize a WAHA side effect with company state changes."""
     from backend.db import SessionLocal
     from backend.services.company_access_control import (
         CompanyOperationallyBlockedError,
         ensure_company_operational,
-        lock_refund_entities_for_mutation,
+        lock_entities_for_mutation,
     )
 
     db = SessionLocal()
     try:
-        lock_refund_entities_for_mutation(db, company_ids=[company_id])
+        lock_entities_for_mutation(db, company_ids=[company_id])
         ensure_company_operational(db, company_id)
         return requests.post(
             url,

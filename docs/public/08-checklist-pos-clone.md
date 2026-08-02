@@ -24,6 +24,8 @@ Use esta lista antes de considerar a instalação concluída.
 - [ ] `frontend/.env.local` contém somente valores públicos.
 - [ ] Nenhum placeholder obrigatório ficou vazio.
 - [ ] `ALLOWED_HOSTS`, origens públicas, cookies e proxy combinam com o ambiente.
+- [ ] `PUBLIC_APP_URL` aponta para o frontend correto.
+- [ ] Se e-mail estiver habilitado, `SMTP_HOST` e `SMTP_FROM_EMAIL` estão preenchidos; usuário e senha foram configurados juntos quando necessários.
 - [ ] Os diretórios de runtime existem e pertencem ao usuário do serviço.
 
 ## Banco
@@ -34,6 +36,7 @@ Use esta lista antes de considerar a instalação concluída.
 - [ ] `alembic current` coincide com o head.
 - [ ] `alembic check` não encontra drift.
 - [ ] O bootstrap criou uma conta com senha própria e sem senha padrão.
+- [ ] Não há rota ou link de autocadastro público.
 
 ## Runtime
 
@@ -73,6 +76,8 @@ Use esta lista antes de considerar a instalação concluída.
 - [ ] Navegar por CRM, planos, contratos, faturas e pagamento manual.
 - [ ] Confirmar estados vazio, carregando e erro no desktop e celular.
 - [ ] Se habilitado, testar uma mensagem WAHA com número de teste.
-- [ ] Se habilitado, testar e-mail, calendário e provedor de IA em homologação.
+- [ ] Se habilitado, testar recuperação de senha e acesso inicial de workspace pelo SMTP em homologação.
+- [ ] Com SMTP indisponível em homologação, confirmar que o link temporário de definição de senha aparece somente ao administrador e pode ser copiado.
+- [ ] Se habilitado, testar calendário e provedor de IA em homologação.
 
 Guarde data, commit e resultados do checklist no seu registro de deploy, sem copiar segredos ou dados pessoais.

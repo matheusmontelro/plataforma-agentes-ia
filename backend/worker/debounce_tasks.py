@@ -184,7 +184,7 @@ def schedule_debounced_processing(
     except Exception as e:
         logger.error(f"[debounce] Erro ao agendar processamento para {phone}: {e}", exc_info=True)
         # Fail closed. An immediate fallback could execute an old buffered
-        # conversation after a refund/restore transition.
+        # conversation after an access-status transition.
 
 
 def clear_debounce_buffer(phone: str):

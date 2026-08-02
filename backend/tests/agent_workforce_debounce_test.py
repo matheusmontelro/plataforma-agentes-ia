@@ -147,7 +147,7 @@ def test_legacy_debounce_drops_stale_epoch_before_reading_buffer(monkeypatch):
     ]
 
 
-def test_typing_indicator_rechecks_company_under_refund_lock(monkeypatch):
+def test_typing_indicator_rechecks_company_under_access_lock(monkeypatch):
     events = []
 
     class _DB:
@@ -179,7 +179,7 @@ def test_typing_indicator_rechecks_company_under_refund_lock(monkeypatch):
     monkeypatch.setattr("backend.db.SessionLocal", lambda: db)
     monkeypatch.setattr(
         company_access_control,
-        "lock_refund_entities_for_mutation",
+        "lock_entities_for_mutation",
         lock,
     )
     monkeypatch.setattr(company_access_control, "ensure_company_operational", ensure)
@@ -223,7 +223,7 @@ def test_typing_indicator_has_no_remote_side_effect_when_company_is_blocked(
     monkeypatch.setattr("backend.db.SessionLocal", lambda: db)
     monkeypatch.setattr(
         company_access_control,
-        "lock_refund_entities_for_mutation",
+        "lock_entities_for_mutation",
         lambda *_args, **_kwargs: events.append("lock"),
     )
 
@@ -231,7 +231,7 @@ def test_typing_indicator_has_no_remote_side_effect_when_company_is_blocked(
         events.append("recheck-blocked")
         raise company_access_control.CompanyOperationallyBlockedError(
             company_id,
-            "refund_pending",
+            "inactive",
         )
 
     monkeypatch.setattr(company_access_control, "ensure_company_operational", blocked)

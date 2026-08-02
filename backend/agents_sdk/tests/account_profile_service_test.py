@@ -55,7 +55,7 @@ def test_normalize_account_billing_profile_preserves_profile_picture_url():
     assert profile["profile_picture_url"] == "/media/account-profiles/client_1_avatar.webp"
 
 
-def test_account_billing_profile_completion_requires_checkout_core_fields():
+def test_account_billing_profile_completion_requires_core_fields():
     assert is_account_billing_profile_complete(
         {
             "full_name": "Cliente Exemplo",

@@ -16,8 +16,7 @@ from ..services.company_access_control import (
     CompanyOperationalLockBusyError,
     CompanyOperationallyBlockedError,
     ensure_company_operational,
-    is_account_refund_blocked,
-    lock_refund_entities_for_mutation,
+    lock_entities_for_mutation,
 )
 
 logger = logging.getLogger(__name__)
@@ -649,7 +648,7 @@ async def delete_contact(
 
         actor_client_ids = [int(user.id)] if isinstance(user, Client) else []
         actor_user_ids = [int(user.id)] if isinstance(user, User) else []
-        lock_refund_entities_for_mutation(
+        lock_entities_for_mutation(
             db,
             company_ids=[company_id],
             client_ids=actor_client_ids,
@@ -673,7 +672,6 @@ async def delete_contact(
             not actor
             or not bool(actor.is_active)
             or int(actor.company_id) != int(company_id)
-            or is_account_refund_blocked(db, actor)
         ):
             raise HTTPException(status_code=423, detail="Acesso suspenso")
 

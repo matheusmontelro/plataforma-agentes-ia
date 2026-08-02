@@ -4,7 +4,6 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext.tsx';
 import Login from './pages/Login.tsx';
-import Register from './pages/Register.tsx';
 import ResetPassword from './pages/ResetPassword.tsx';
 import NewCompanyAdminPage from './pages/CreateNewCompanyPage.tsx';
 import PrivateRoute from './components/PrivateRoute.tsx';
@@ -56,7 +55,6 @@ const App: React.FC = () => {
               {/* Rotas públicas */}
               <Route path="/" element={<Login />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
               <Route path="/reset-password" element={<ResetPassword />} />
 
               {/* Rotas privadas */}

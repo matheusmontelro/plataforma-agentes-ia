@@ -42,7 +42,6 @@ from backend.models.ai_credit_models import (
     AICreditWallet,
     AIUsageEvent,
     AICreditTransaction,
-    AICreditPurchase,
 )
 
 from backend.models.ai_provider_models import AIProviderCredential
@@ -58,7 +57,6 @@ _all_exports.extend([
     'AICreditWallet',
     'AIUsageEvent',
     'AICreditTransaction',
-    'AICreditPurchase',
     'AIProviderCredential',
 ])
 

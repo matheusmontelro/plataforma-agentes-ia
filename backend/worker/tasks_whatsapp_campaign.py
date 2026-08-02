@@ -310,7 +310,7 @@ def process_whatsapp_campaign(campaign_id: int):
                 continue
 
             # Queue only while the committed execution remains pending under
-            # the same company fence used by refund offboarding.
+            # the company operational-access fence.
             try:
                 enqueued, _ = enqueue_company_job_if_active(
                     db,

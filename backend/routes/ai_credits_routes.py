@@ -1,39 +1,21 @@
-"""Read APIs for internal AI credit usage and packages."""
+"""Read APIs for the internal AI credit ledger."""
 
 from __future__ import annotations
 
-import json
-import logging
-import os
-import uuid
 from datetime import datetime, time, timedelta, timezone
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session, joinedload
 
 from backend.auth import get_current_user
 from backend.db import get_db
-from backend.models import AICreditPurchase, AICreditTransaction, AICreditWallet, AIUsageEvent
-from backend.services.account_profile_service import get_master_client_for_user
-from backend.services.eduzz_checkout_service import (
-    EduzzAPIError,
-    EduzzConfigurationError,
-    create_ai_credit_cart,
-    get_eduzz_checkout_config,
-    is_eduzz_credit_product_configured,
-    is_eduzz_checkout_configured,
-)
-
-logger = logging.getLogger(__name__)
+from backend.models import AICreditTransaction, AICreditWallet, AIUsageEvent
 
 router = APIRouter(prefix="/ai-credits", tags=["AI Credits"])
-
-CREDIT_QUANT = Decimal("0.000001")
-
 
 def _to_float(value: Any) -> float:
     if value is None:
@@ -45,19 +27,6 @@ def _to_int(value: Any) -> int:
     if value is None:
         return 0
     return int(value)
-
-
-def _truthy_env(name: str, default: str = "false") -> bool:
-    value = os.getenv(name, default)
-    return str(value).strip().lower() in {"1", "true", "yes", "on", "enabled"}
-
-
-def _manual_package_purchase_enabled() -> bool:
-    return _truthy_env("AI_CREDIT_ENABLE_MANUAL_PACKAGE_PURCHASE")
-
-
-def _to_credit_decimal(value: Any) -> Decimal:
-    return Decimal(str(value or 0)).quantize(CREDIT_QUANT)
 
 
 def _company_id_from_user(user: Any) -> int:
@@ -169,138 +138,6 @@ class AICreditTransactionsResponse(BaseModel):
     items: List[AICreditTransactionItem]
 
 
-class AICreditPackage(BaseModel):
-    code: str
-    name: str
-    credits: int
-    price_cents: int
-    currency: str = "BRL"
-    description: str
-    features: List[str] = Field(default_factory=list)
-    recommended: bool = False
-    checkout_url: Optional[str] = None
-
-
-class AICreditPackagesResponse(BaseModel):
-    packages: List[AICreditPackage]
-    checkout_available: bool
-    manual_purchase_available: bool = False
-
-
-class AICreditPackagePurchaseResponse(BaseModel):
-    package: AICreditPackage
-    wallet: AICreditWalletSummary
-    transaction: AICreditTransactionItem
-    manual_purchase: bool = True
-
-
-class AICreditCheckoutResponse(BaseModel):
-    package: AICreditPackage
-    order_id: str
-    payment_url: str
-    provider: str = "eduzz"
-
-
-DEFAULT_PACKAGES: List[Dict[str, Any]] = [
-    {
-        "code": "essential",
-        "name": "Essencial",
-        "credits": 50_000,
-        "price_cents": 9_700,
-        "description": "Para operações pequenas validarem texto e voz com previsibilidade.",
-        "features": ["Saldo pré-pago", "Extrato por agente", "Consumo de texto e voz"],
-    },
-    {
-        "code": "growth",
-        "name": "Crescimento",
-        "credits": 150_000,
-        "price_cents": 24_700,
-        "description": "Para clínicas com agentes ativos todos os dias.",
-        "features": ["Melhor ponto de entrada", "Alertas de saldo baixo", "Uso por período"],
-        "recommended": True,
-    },
-    {
-        "code": "operation",
-        "name": "Operação",
-        "credits": 500_000,
-        "price_cents": 59_700,
-        "description": "Para times com alto volume de WhatsApp e respostas em áudio.",
-        "features": ["Mais margem de escala", "Histórico detalhado", "Previsão de consumo"],
-    },
-    {
-        "code": "agency",
-        "name": "Agência",
-        "credits": 1_500_000,
-        "price_cents": 149_700,
-        "description": "Para alunos/agências gerenciando múltiplas empresas clientes.",
-        "features": ["Volume avançado", "Gestão operacional", "Pagamento online dedicado"],
-    },
-]
-
-
-def _load_packages() -> List[AICreditPackage]:
-    raw = os.getenv("AI_CREDIT_PACKAGES_JSON")
-    payload = DEFAULT_PACKAGES
-    if raw:
-        try:
-            parsed = json.loads(raw)
-            if isinstance(parsed, list):
-                payload = parsed
-            else:
-                logger.warning("AI_CREDIT_PACKAGES_JSON must be a JSON list; using defaults")
-        except json.JSONDecodeError:
-            logger.warning("Invalid AI_CREDIT_PACKAGES_JSON; using defaults")
-
-    checkout_urls: Dict[str, str] = {}
-    raw_urls = os.getenv("AI_CREDIT_PACKAGE_CHECKOUT_URLS_JSON")
-    if raw_urls:
-        try:
-            parsed_urls = json.loads(raw_urls)
-            if isinstance(parsed_urls, dict):
-                checkout_urls = {
-                    str(key): str(value)
-                    for key, value in parsed_urls.items()
-                    if value
-                }
-        except json.JSONDecodeError:
-            logger.warning("Invalid AI_CREDIT_PACKAGE_CHECKOUT_URLS_JSON; ignoring checkout URLs")
-
-    packages: List[AICreditPackage] = []
-    for item in payload:
-        package = AICreditPackage(**item)
-        if not package.checkout_url:
-            package.checkout_url = checkout_urls.get(package.code)
-        packages.append(package)
-    return packages
-
-
-def _find_package(package_code: str) -> AICreditPackage:
-    for package in _load_packages():
-        if package.code == package_code:
-            return package
-    raise HTTPException(status_code=404, detail="Pacote de créditos não encontrado")
-
-
-def _get_or_create_wallet(db: Session, company_id: int) -> AICreditWallet:
-    wallet = (
-        db.query(AICreditWallet)
-        .filter(AICreditWallet.company_id == company_id)
-        .with_for_update()
-        .one_or_none()
-    )
-    if wallet:
-        return wallet
-
-    wallet = AICreditWallet(company_id=company_id)
-    db.add(wallet)
-    db.flush()
-    return wallet
-
-
-def _build_eduzz_order_id(company_id: int, package_code: str) -> str:
-    return f"aic-{company_id}-{package_code}-{uuid.uuid4().hex[:18]}"
-
-
 def _build_wallet_summary(wallet: Optional[AICreditWallet]) -> AICreditWalletSummary:
     return AICreditWalletSummary(
         balance_credits=_to_float(wallet.balance_credits if wallet else 0),
@@ -366,46 +203,6 @@ def _build_transaction_item(transaction: AICreditTransaction) -> AICreditTransac
         created_at=transaction.created_at,
         usage=usage,
     )
-
-
-def _grant_manual_package_credits(
-    *,
-    db: Session,
-    company_id: int,
-    package: AICreditPackage,
-    user: Any,
-) -> tuple[AICreditWallet, AICreditTransaction]:
-    wallet = _get_or_create_wallet(db, company_id)
-    credits = _to_credit_decimal(package.credits)
-    current_balance = _to_credit_decimal(wallet.balance_credits)
-    current_granted = _to_credit_decimal(wallet.total_granted_credits)
-    wallet.balance_credits = _to_credit_decimal(current_balance + credits)
-    wallet.total_granted_credits = _to_credit_decimal(current_granted + credits)
-
-    user_id = getattr(user, "id", None)
-    user_email = getattr(user, "email", None)
-    transaction = AICreditTransaction(
-        company_id=company_id,
-        wallet_id=wallet.id,
-        transaction_type="credit",
-        amount_credits=credits,
-        balance_after=wallet.balance_credits,
-        description=f"Recarga manual sem checkout: pacote {package.name}",
-        transaction_metadata={
-            "source": "manual_no_checkout_purchase",
-            "package_code": package.code,
-            "package_name": package.name,
-            "credits": int(package.credits),
-            "price_cents": int(package.price_cents),
-            "currency": package.currency,
-            "checkout_url": package.checkout_url,
-            "actor_user_id": int(user_id) if user_id is not None else None,
-            "actor_email": user_email,
-        },
-    )
-    db.add(transaction)
-    db.flush()
-    return wallet, transaction
 
 
 @router.get("/summary", response_model=AICreditSummaryResponse)
@@ -612,43 +409,3 @@ def get_ai_credit_transactions(
         items.append(_build_transaction_item(transaction))
 
     return AICreditTransactionsResponse(total=total, limit=limit, offset=offset, items=items)
-
-
-@router.get("/packages", response_model=AICreditPackagesResponse)
-def get_ai_credit_packages(
-    user: Any = Depends(get_current_user),
-) -> AICreditPackagesResponse:
-    _company_id_from_user(user)
-    return AICreditPackagesResponse(
-        packages=[],
-        checkout_available=False,
-        manual_purchase_available=False,
-    )
-
-
-@router.post("/packages/{package_code}/checkout", response_model=AICreditCheckoutResponse)
-def create_ai_credit_package_checkout(
-    package_code: str,
-    db: Session = Depends(get_db),
-    user: Any = Depends(get_current_user),
-) -> AICreditCheckoutResponse:
-    del package_code, db
-    _company_id_from_user(user)
-    raise HTTPException(
-        status_code=410,
-        detail="Pacotes de créditos foram descontinuados. Configure a chave OpenAI da empresa.",
-    )
-
-
-@router.post("/packages/{package_code}/purchase", response_model=AICreditPackagePurchaseResponse)
-def purchase_ai_credit_package(
-    package_code: str,
-    db: Session = Depends(get_db),
-    user: Any = Depends(get_current_user),
-) -> AICreditPackagePurchaseResponse:
-    del package_code, db
-    _company_id_from_user(user)
-    raise HTTPException(
-        status_code=410,
-        detail="Pacotes de créditos foram descontinuados. Configure a chave OpenAI da empresa.",
-    )

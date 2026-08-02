@@ -50,7 +50,7 @@ class AccountBillingProfilePayload(BaseModel):
 
 class AccountProfileResponse(BaseModel):
     billing_profile: dict[str, str]
-    checkout_ready: bool
+    profile_complete: bool
     email: str
     id: int
 
@@ -70,7 +70,7 @@ def _build_response(client: Client) -> AccountProfileResponse:
         id=int(client.id),
         email=str(client.email),
         billing_profile=profile,
-        checkout_ready=is_account_billing_profile_complete(profile),
+        profile_complete=is_account_billing_profile_complete(profile),
     )
 
 

@@ -1,5 +1,4 @@
 import os
-from contextlib import contextmanager
 from decimal import Decimal
 from types import SimpleNamespace
 
@@ -16,7 +15,6 @@ from backend.models import (
     Company,
     Customer,
     CustomerManagedCompany,
-    RefundAccessSuspension,
     User,
 )
 from backend.routes import company as company_routes
@@ -94,8 +92,6 @@ class FakeDB:
             return FakeQuery(self.client_companies)
         if model is CustomerManagedCompany:
             return FakeQuery(self.customer_managed_companies)
-        if model is RefundAccessSuspension.id:
-            return FakeQuery([])
         if model is Company.operational_status:
             return FakeQuery(
                 [
@@ -176,8 +172,8 @@ def stub_workspace_onboarding_integrations(monkeypatch):
     )
     monkeypatch.setattr(
         company_routes,
-        "send_managed_workspace_welcome_email",
-        lambda *args, **kwargs: SimpleNamespace(sent=True, skipped=False),
+        "send_password_setup_email",
+        lambda *args, **kwargs: SimpleNamespace(sent=True, skipped=False, reason=None),
     )
 
 
@@ -260,7 +256,10 @@ def test_owner_client_can_create_workspace_linked_to_customer(monkeypatch):
     assert managed_link.created_by_client_id == owner_client.id
     assert managed_link.lifecycle_status == "trialing"
     assert response["client_created"] is False
-    assert response["managed_welcome_email_sent"] is True
+    assert response["password_setup_email_sent"] is False
+    assert response["password_setup_email_skipped"] is True
+    assert response["password_setup_email_reason"] == "existing_account"
+    assert "password_setup_url" not in response
     assert db.commit_snapshots[0]["managed_links"] == 1
 
 
@@ -276,7 +275,7 @@ def test_workspace_creation_locks_owner_and_existing_target_in_global_order(monk
     lock_calls = []
     monkeypatch.setattr(
         company_routes,
-        "lock_refund_entities_for_mutation",
+        "lock_entities_for_mutation",
         lambda _db, **kwargs: lock_calls.append(kwargs),
     )
     monkeypatch.setattr(
@@ -359,6 +358,9 @@ def test_owner_client_can_create_missing_customer_master_user(monkeypatch):
     assert response["client_created"] is True
     assert setup_token_kwargs["min_ttl_minutes"] == 3 * 24 * 60
     assert response["password_setup_email_sent"] is True
+    assert response["password_setup_email_skipped"] is False
+    assert response["password_setup_email_reason"] is None
+    assert "password_setup_url" not in response
     assert any(
         int(link.client_id) == int(created_client.id) and int(link.company_id) == int(response["company_id"])
         for link in db.client_companies
@@ -370,117 +372,17 @@ def test_owner_client_can_create_missing_customer_master_user(monkeypatch):
     assert db.commit_snapshots[0]["managed_links"] == 1
 
 
-def test_managed_workspace_commit_survives_refund_before_welcome(monkeypatch):
-    owner_company, owner_client, target_client, customer, account, owner_access = _owner_fixture()
+def test_missing_smtp_returns_one_time_password_setup_url(monkeypatch):
+    owner_company, owner_client, _target_client, customer, account, owner_access = _owner_fixture()
+    customer.email = "novo-cliente@example.com"
+    customer.cpf = "12345678901"
     db = FakeDB(
-        clients=[owner_client, target_client],
+        clients=[owner_client],
         companies=[owner_company],
         customers=[customer],
         accounts=[account],
         client_companies=[owner_access],
     )
-    provider_calls = []
-    monkeypatch.setattr(
-        company_routes,
-        "managed_workspace_trial_credits_for_days",
-        lambda _days: Decimal("0"),
-    )
-
-    @contextmanager
-    def refund_wins_before_email(_db, _emails, *, reservation):
-        assert reservation is not None
-        owner_company.operational_status = "refund_pending"
-        owner_client.is_active = False
-        yield
-
-    monkeypatch.setattr(
-        company_routes,
-        "managed_workspace_refund_identity_locks",
-        refund_wins_before_email,
-    )
-    monkeypatch.setattr(
-        company_routes,
-        "send_managed_workspace_welcome_email",
-        lambda *_args, **_kwargs: provider_calls.append(True),
-    )
-
-    response = company_routes.create_new_company_admin(
-        client_email=target_client.email,
-        company_name="Workspace preservado",
-        company_cnpj="12345678000199",
-        customer_id=customer.id,
-        trial_days=7,
-        db=db,
-        current_user=owner_client,
-    )
-
-    assert response["company_id"] == 900
-    assert db.customer_managed_companies
-    assert response["managed_welcome_email_sent"] is False
-    assert response["managed_welcome_email_skipped"] is True
-    assert provider_calls == []
-
-
-def test_managed_workspace_commit_survives_busy_welcome_fence(monkeypatch):
-    owner_company, owner_client, target_client, customer, account, owner_access = _owner_fixture()
-    db = FakeDB(
-        clients=[owner_client, target_client],
-        companies=[owner_company],
-        customers=[customer],
-        accounts=[account],
-        client_companies=[owner_access],
-    )
-    provider_calls = []
-    monkeypatch.setattr(
-        company_routes,
-        "managed_workspace_trial_credits_for_days",
-        lambda _days: Decimal("0"),
-    )
-
-    @contextmanager
-    def busy_identity_fence(_db, _emails, *, reservation):
-        assert reservation is not None
-        raise company_routes.RefundIdentityOperationBusyError("test_busy")
-        yield
-
-    monkeypatch.setattr(
-        company_routes,
-        "managed_workspace_refund_identity_locks",
-        busy_identity_fence,
-    )
-    monkeypatch.setattr(
-        company_routes,
-        "send_managed_workspace_welcome_email",
-        lambda *_args, **_kwargs: provider_calls.append(True),
-    )
-
-    response = company_routes.create_new_company_admin(
-        client_email=target_client.email,
-        company_name="Workspace preservado",
-        company_cnpj="12345678000199",
-        customer_id=customer.id,
-        trial_days=7,
-        db=db,
-        current_user=owner_client,
-    )
-
-    assert response["company_id"] == 900
-    assert db.customer_managed_companies
-    assert response["managed_welcome_email_sent"] is False
-    assert response["managed_welcome_email_skipped"] is True
-    assert provider_calls == []
-
-
-def test_managed_workspace_commit_survives_db_failure_before_welcome(monkeypatch):
-    owner_company, owner_client, target_client, customer, account, owner_access = _owner_fixture()
-    db = FakeDB(
-        clients=[owner_client, target_client],
-        companies=[owner_company],
-        customers=[customer],
-        accounts=[account],
-        client_companies=[owner_access],
-    )
-    provider_calls = []
     monkeypatch.setattr(
         company_routes,
         "managed_workspace_trial_credits_for_days",
@@ -488,32 +390,31 @@ def test_managed_workspace_commit_survives_db_failure_before_welcome(monkeypatch
     )
     monkeypatch.setattr(
         company_routes,
-        "revalidate_managed_workspace_email_delivery",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(
-            RuntimeError("database unavailable")
+        "send_password_setup_email",
+        lambda **_kwargs: SimpleNamespace(
+            sent=False,
+            skipped=True,
+            reason="smtp_not_configured",
         ),
     )
-    monkeypatch.setattr(
-        company_routes,
-        "send_managed_workspace_welcome_email",
-        lambda *_args, **_kwargs: provider_calls.append(True),
-    )
 
     response = company_routes.create_new_company_admin(
-        client_email=target_client.email,
-        company_name="Workspace preservado",
-        company_cnpj="12345678000199",
+        client_email=customer.email,
+        company_name="Workspace sem SMTP",
+        company_cnpj=customer.cpf,
         customer_id=customer.id,
-        trial_days=7,
+        trial_days=0,
         db=db,
         current_user=owner_client,
     )
 
-    assert response["company_id"] == 900
-    assert db.customer_managed_companies
-    assert response["managed_welcome_email_sent"] is False
-    assert response["managed_welcome_email_skipped"] is True
-    assert provider_calls == []
+    assert response["client_created"] is True
+    assert response["password_setup_email_sent"] is False
+    assert response["password_setup_email_skipped"] is True
+    assert response["password_setup_email_reason"] == "smtp_not_configured"
+    assert response["password_setup_url"] == (
+        "https://example.test/reset-password?token=test"
+    )
 
 
 def test_managed_workspace_uses_immutable_owner_when_context_is_shared(monkeypatch):
@@ -542,7 +443,7 @@ def test_managed_workspace_uses_immutable_owner_when_context_is_shared(monkeypat
         current_user=owner_client,
     )
 
-    assert response["managed_welcome_email_sent"] is True
+    assert response["password_setup_email_reason"] == "existing_account"
     assert db.customer_managed_companies[0].owner_company_id == owner_company.id
 
 
@@ -592,7 +493,7 @@ def test_remove_user_company_rejects_ownership_anchor():
     assert db.client_companies == [owner_access]
 
 
-def test_remove_user_company_fences_refund_scope_before_unlink(monkeypatch):
+def test_remove_user_company_locks_scope_before_unlink(monkeypatch):
     owner_company, owner_client, _target_client, _customer, _account, owner_access = _owner_fixture()
     owner_client.ownership_company_id = owner_company.id
     selected_company = Company(
@@ -613,7 +514,7 @@ def test_remove_user_company_fences_refund_scope_before_unlink(monkeypatch):
     events = []
     monkeypatch.setattr(
         company_routes,
-        "lock_refund_entities_for_mutation",
+        "lock_entities_for_mutation",
         lambda _db, **kwargs: events.append(("lock", kwargs)),
     )
     monkeypatch.setattr(
@@ -621,12 +522,6 @@ def test_remove_user_company_fences_refund_scope_before_unlink(monkeypatch):
         "ensure_company_operational",
         lambda _db, company_id: events.append(("operational", company_id)),
     )
-    monkeypatch.setattr(
-        company_routes,
-        "is_account_refund_blocked",
-        lambda _db, _client: False,
-    )
-
     result = company_routes.remove_user_company(
         company_id=selected_company.id,
         db=db,
@@ -702,9 +597,9 @@ def test_owner_workspace_creation_blocks_same_email_as_owner():
     assert db.customer_managed_companies == []
 
 
-def test_owner_workspace_creation_rechecks_refund_state_after_scope_lock():
+def test_owner_workspace_creation_rechecks_operational_state_after_scope_lock():
     owner_company, owner_client, target_client, customer, account, owner_access = _owner_fixture()
-    owner_company.operational_status = "refund_pending"
+    owner_company.operational_status = "blocked"
     db = FakeDB(
         clients=[owner_client, target_client],
         companies=[owner_company],
@@ -716,7 +611,7 @@ def test_owner_workspace_creation_rechecks_refund_state_after_scope_lock():
     with pytest.raises(HTTPException) as exc:
         company_routes.create_new_company_admin(
             client_email=target_client.email,
-            company_name="Workspace durante reembolso",
+            company_name="Workspace durante bloqueio",
             company_cnpj="12345678000199",
             customer_id=customer.id,
             trial_days=7,

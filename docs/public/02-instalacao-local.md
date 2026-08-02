@@ -107,7 +107,7 @@ Em outro terminal:
 npm --prefix frontend start
 ```
 
-Use a URL exibida pelo Vite, normalmente `http://localhost:3004`. As chamadas para `/api`, `/auth`, `/webhook`, `/payments`, `/health`, `/ws`, `/media` e `/agents-sdk` são encaminhadas ao backend pelo proxy de desenvolvimento.
+Use a URL exibida pelo Vite, normalmente `http://localhost:3004`. As chamadas para `/api`, `/auth`, `/webhook`, `/health`, `/ws`, `/media` e `/agents-sdk` são encaminhadas ao backend pelo proxy de desenvolvimento.
 
 ## 8. Verificação mínima
 

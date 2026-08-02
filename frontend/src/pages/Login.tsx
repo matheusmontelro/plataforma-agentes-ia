@@ -251,12 +251,6 @@ const Login = () => {
               </button>
             </form>
 
-            <div className="mt-6 text-center text-sm">
-              <span className="text-brand/45">Ainda não tem acesso? </span>
-              <a href="/register" className="font-semibold text-brand underline-offset-4 hover:underline">
-                Criar conta
-              </a>
-            </div>
           </div>
 
           <div className="mt-5 text-center text-[11px] text-brand/40">

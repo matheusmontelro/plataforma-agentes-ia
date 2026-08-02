@@ -210,41 +210,6 @@ def test_record_openai_usage_event_keeps_wallet_untouched_for_byok(monkeypatch):
     assert db.committed == 1
 
 
-def test_grant_student_registration_ai_credits_creates_credit_transaction(monkeypatch):
-    wallet = SimpleNamespace(
-        id=11,
-        balance_credits=Decimal("10.000000"),
-        total_granted_credits=Decimal("20.000000"),
-    )
-    monkeypatch.setattr(
-        ai_usage_service,
-        "_get_or_create_wallet",
-        lambda db, company_id: wallet,
-    )
-    db = FakeDB()
-
-    result_wallet, transaction = ai_usage_service.grant_student_registration_ai_credits(
-        db=db,
-        company_id=7,
-        client_id=3,
-        email="student@example.com",
-        registration_product_id="course-1",
-        registration_sale_id="sale-1",
-    )
-
-    assert result_wallet is wallet
-    assert wallet.balance_credits == Decimal("5010.000000")
-    assert wallet.total_granted_credits == Decimal("5020.000000")
-    assert transaction.id == 100
-    assert transaction.transaction_type == "credit"
-    assert transaction.amount_credits == Decimal("5000.000000")
-    assert transaction.balance_after == Decimal("5010.000000")
-    assert transaction.transaction_metadata["source"] == "student_registration_bonus"
-    assert transaction.transaction_metadata["client_id"] == 3
-    assert transaction.transaction_metadata["registration_product_id"] == "course-1"
-    assert db.committed == 0
-
-
 def test_managed_workspace_trial_credit_map():
     assert ai_usage_service.managed_workspace_trial_credits_for_days(0) == Decimal("0.000000")
     assert ai_usage_service.managed_workspace_trial_credits_for_days(3) == Decimal("500.000000")

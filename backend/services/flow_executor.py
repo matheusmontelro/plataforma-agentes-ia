@@ -453,7 +453,7 @@ class FlowExecutor:
             CompanyOperationallyBlockedError,
             ensure_company_operational,
             get_company_operational_epoch,
-            lock_refund_entities_for_mutation,
+            lock_entities_for_mutation,
         )
 
         # BFS queue
@@ -474,11 +474,10 @@ class FlowExecutor:
 
             logger.info(f"[FlowExecutor] Executing node: {node_id} ({node_type})")
 
-            # A refund can begin after the flow itself was loaded. Reacquire the
-            # same entity lock used by offboarding and revalidate immediately
-            # before every node so no later node starts after suspension.
+            # Company state can change after the flow is loaded. Reacquire the
+            # entity lock and revalidate before each node.
             try:
-                lock_refund_entities_for_mutation(
+                lock_entities_for_mutation(
                     db,
                     company_ids=[self.company_id],
                 )

@@ -67,19 +67,6 @@ def upgrade() -> None:
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('phone', 'company_id')
     )
-    op.create_table('refund_access_entity_states',
-    sa.Column('id', sa.BigInteger(), autoincrement=True, nullable=False),
-    sa.Column('entity_type', sa.String(length=20), nullable=False),
-    sa.Column('entity_id', sa.BigInteger(), nullable=False),
-    sa.Column('restore_active', sa.Boolean(), nullable=True),
-    sa.Column('restore_waha_enabled', sa.Boolean(), nullable=True),
-    sa.Column('waha_was_finalized', sa.Boolean(), server_default='false', nullable=False),
-    sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.CheckConstraint("entity_type IN ('company', 'client', 'user')", name='chk_refund_access_entity_state_type'),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('entity_type', 'entity_id', name='uq_refund_access_entity_state')
-    )
     op.create_table('companies',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('name', sa.String(length=255), nullable=False),
@@ -771,24 +758,6 @@ def upgrade() -> None:
     sa.UniqueConstraint('pos_consulta_sequence_id', 'step_number', name='uq_pos_consulta_step_number')
     )
     op.create_index(op.f('ix_pos_consulta_steps_id'), 'pos_consulta_steps', ['id'], unique=False)
-    op.create_table('refund_access_suspensions',
-    sa.Column('id', sa.BigInteger(), autoincrement=True, nullable=False),
-    sa.Column('source', sa.String(length=40), nullable=False),
-    sa.Column('invoice_id', sa.String(length=255), nullable=False),
-    sa.Column('email_hash', sa.String(length=64), nullable=False),
-    sa.Column('root_client_id', sa.Integer(), nullable=True),
-    sa.Column('state', sa.String(length=30), server_default='refund_pending', nullable=False),
-    sa.Column('latest_event_id', sa.String(length=255), nullable=False),
-    sa.Column('latest_occurred_at', sa.TIMESTAMP(timezone=True), nullable=False),
-    sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.CheckConstraint("state IN ('refund_pending', 'refunded', 'active')", name='chk_refund_access_suspension_state'),
-    sa.ForeignKeyConstraint(['root_client_id'], ['clients.id'], ondelete='SET NULL'),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('source', 'invoice_id', name='uq_refund_access_suspension_source_invoice')
-    )
-    op.create_index('idx_refund_access_suspensions_client_state', 'refund_access_suspensions', ['root_client_id', 'state'], unique=False)
-    op.create_index('idx_refund_access_suspensions_email_hash', 'refund_access_suspensions', ['email_hash'], unique=False)
     op.create_table('tags',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('company_id', sa.BigInteger(), nullable=False),
@@ -857,44 +826,6 @@ def upgrade() -> None:
     )
     op.create_index('idx_webhook_events_company_received', 'webhook_events', ['company_id', 'received_at'], unique=False)
     op.create_index('idx_webhook_events_trigger_received', 'webhook_events', ['webhook_trigger_id', 'received_at'], unique=False)
-    op.create_table('ai_credit_purchases',
-    sa.Column('id', sa.BigInteger(), autoincrement=True, nullable=False),
-    sa.Column('order_id', sa.String(length=80), nullable=False),
-    sa.Column('company_id', sa.BigInteger(), nullable=False),
-    sa.Column('user_id', sa.BigInteger(), nullable=True),
-    sa.Column('provider', sa.String(length=30), server_default='eduzz', nullable=False),
-    sa.Column('provider_product_id', sa.String(length=120), nullable=False),
-    sa.Column('package_code', sa.String(length=80), nullable=False),
-    sa.Column('package_name', sa.String(length=120), nullable=False),
-    sa.Column('credits', sa.Numeric(precision=18, scale=6), nullable=False),
-    sa.Column('price_cents', sa.Integer(), nullable=False),
-    sa.Column('currency', sa.String(length=10), server_default='BRL', nullable=False),
-    sa.Column('status', sa.String(length=30), server_default='pending', nullable=False),
-    sa.Column('payment_url', sa.Text(), nullable=True),
-    sa.Column('eduzz_cart_id', sa.String(length=120), nullable=True),
-    sa.Column('eduzz_cart_key', sa.String(length=255), nullable=True),
-    sa.Column('eduzz_invoice_id', sa.String(length=120), nullable=True),
-    sa.Column('eduzz_transaction_id', sa.String(length=120), nullable=True),
-    sa.Column('eduzz_webhook_event_id', sa.String(length=120), nullable=True),
-    sa.Column('credited_transaction_id', sa.BigInteger(), nullable=True),
-    sa.Column('checkout_request', postgresql.JSONB(astext_type=sa.Text()), server_default='{}', nullable=False),
-    sa.Column('checkout_response', postgresql.JSONB(astext_type=sa.Text()), server_default='{}', nullable=False),
-    sa.Column('webhook_payload', postgresql.JSONB(astext_type=sa.Text()), server_default='{}', nullable=False),
-    sa.Column('purchase_metadata', postgresql.JSONB(astext_type=sa.Text()), server_default='{}', nullable=False),
-    sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=True),
-    sa.Column('updated_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=True),
-    sa.Column('credited_at', sa.TIMESTAMP(timezone=True), nullable=True),
-    sa.CheckConstraint("status IN ('pending', 'checkout_created', 'credited', 'failed')", name='chk_ai_credit_purchase_status'),
-    sa.ForeignKeyConstraint(['company_id'], ['companies.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['credited_transaction_id'], ['ai_credit_transactions.id'], ondelete='SET NULL'),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('eduzz_invoice_id', name='uq_ai_credit_purchases_eduzz_invoice'),
-    sa.UniqueConstraint('eduzz_transaction_id', name='uq_ai_credit_purchases_eduzz_transaction'),
-    sa.UniqueConstraint('eduzz_webhook_event_id', name='uq_ai_credit_purchases_eduzz_event'),
-    sa.UniqueConstraint('order_id', name='uq_ai_credit_purchases_order_id')
-    )
-    op.create_index('idx_ai_credit_purchases_company_created', 'ai_credit_purchases', ['company_id', 'created_at'], unique=False)
-    op.create_index('idx_ai_credit_purchases_status', 'ai_credit_purchases', ['status'], unique=False)
     op.create_table('confirmation_messages',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('confirmation_step_id', sa.Integer(), nullable=False),
@@ -1124,45 +1055,6 @@ def upgrade() -> None:
     op.create_index('idx_referral_campaigns_active', 'referral_campaigns', ['active'], unique=False)
     op.create_index('idx_referral_campaigns_company', 'referral_campaigns', ['company_id'], unique=False)
     op.create_index(op.f('ix_referral_campaigns_id'), 'referral_campaigns', ['id'], unique=False)
-    op.create_table('refund_access_events',
-    sa.Column('id', sa.BigInteger(), autoincrement=True, nullable=False),
-    sa.Column('event_id', sa.String(length=255), nullable=False),
-    sa.Column('idempotency_key', sa.String(length=255), nullable=False),
-    sa.Column('source', sa.String(length=40), nullable=False),
-    sa.Column('invoice_id', sa.String(length=255), nullable=False),
-    sa.Column('email_hash', sa.String(length=64), nullable=False),
-    sa.Column('suspension_id', sa.BigInteger(), nullable=True),
-    sa.Column('requested_state', sa.String(length=30), nullable=False),
-    sa.Column('occurred_at', sa.TIMESTAMP(timezone=True), nullable=False),
-    sa.Column('status', sa.String(length=30), server_default='processing', nullable=False),
-    sa.Column('response_payload', postgresql.JSONB(astext_type=sa.Text()), server_default='{}', nullable=False),
-    sa.Column('error_code', sa.String(length=80), nullable=True),
-    sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('completed_at', sa.TIMESTAMP(timezone=True), nullable=True),
-    sa.CheckConstraint("requested_state IN ('refund_pending', 'refunded', 'active')", name='chk_refund_access_event_requested_state'),
-    sa.CheckConstraint("status IN ('processing', 'completed', 'failed')", name='chk_refund_access_event_status'),
-    sa.ForeignKeyConstraint(['suspension_id'], ['refund_access_suspensions.id'], ondelete='SET NULL'),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('event_id'),
-    sa.UniqueConstraint('idempotency_key')
-    )
-    op.create_index('idx_refund_access_events_status', 'refund_access_events', ['status'], unique=False)
-    op.create_index('idx_refund_access_events_suspension', 'refund_access_events', ['suspension_id'], unique=False)
-    op.create_table('refund_access_targets',
-    sa.Column('id', sa.BigInteger(), autoincrement=True, nullable=False),
-    sa.Column('suspension_id', sa.BigInteger(), nullable=False),
-    sa.Column('entity_type', sa.String(length=20), nullable=False),
-    sa.Column('entity_id', sa.BigInteger(), nullable=False),
-    sa.Column('previous_active', sa.Boolean(), nullable=True),
-    sa.Column('previous_waha_enabled', sa.Boolean(), nullable=True),
-    sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.CheckConstraint("entity_type IN ('company', 'client', 'user')", name='chk_refund_access_target_entity_type'),
-    sa.ForeignKeyConstraint(['suspension_id'], ['refund_access_suspensions.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('suspension_id', 'entity_type', 'entity_id', name='uq_refund_access_target_entity')
-    )
-    op.create_index('idx_refund_access_targets_entity', 'refund_access_targets', ['entity_type', 'entity_id'], unique=False)
     op.create_table('user_sessions',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.BigInteger(), nullable=False),
@@ -1978,11 +1870,6 @@ def downgrade() -> None:
     op.drop_index('idx_user_sessions_user', table_name='user_sessions')
     op.drop_index('idx_user_sessions_token', table_name='user_sessions')
     op.drop_table('user_sessions')
-    op.drop_index('idx_refund_access_targets_entity', table_name='refund_access_targets')
-    op.drop_table('refund_access_targets')
-    op.drop_index('idx_refund_access_events_suspension', table_name='refund_access_events')
-    op.drop_index('idx_refund_access_events_status', table_name='refund_access_events')
-    op.drop_table('refund_access_events')
     op.drop_index(op.f('ix_referral_campaigns_id'), table_name='referral_campaigns')
     op.drop_index('idx_referral_campaigns_company', table_name='referral_campaigns')
     op.drop_index('idx_referral_campaigns_active', table_name='referral_campaigns')
@@ -2022,9 +1909,6 @@ def downgrade() -> None:
     op.drop_table('contact_notes')
     op.drop_index(op.f('ix_confirmation_messages_id'), table_name='confirmation_messages')
     op.drop_table('confirmation_messages')
-    op.drop_index('idx_ai_credit_purchases_status', table_name='ai_credit_purchases')
-    op.drop_index('idx_ai_credit_purchases_company_created', table_name='ai_credit_purchases')
-    op.drop_table('ai_credit_purchases')
     op.drop_index('idx_webhook_events_trigger_received', table_name='webhook_events')
     op.drop_index('idx_webhook_events_company_received', table_name='webhook_events')
     op.drop_table('webhook_events')
@@ -2036,9 +1920,6 @@ def downgrade() -> None:
     op.drop_index('idx_tags_company', table_name='tags')
     op.drop_index('idx_tags_category', table_name='tags')
     op.drop_table('tags')
-    op.drop_index('idx_refund_access_suspensions_email_hash', table_name='refund_access_suspensions')
-    op.drop_index('idx_refund_access_suspensions_client_state', table_name='refund_access_suspensions')
-    op.drop_table('refund_access_suspensions')
     op.drop_index(op.f('ix_pos_consulta_steps_id'), table_name='pos_consulta_steps')
     op.drop_table('pos_consulta_steps')
     op.drop_index(op.f('ix_pos_consulta_schedule_configs_id'), table_name='pos_consulta_schedule_configs')
@@ -2137,7 +2018,6 @@ def downgrade() -> None:
     op.drop_table('agendas')
     op.drop_table('ad_campaign_media')
     op.drop_table('companies')
-    op.drop_table('refund_access_entity_states')
     op.drop_table('conversation_state')
     op.drop_index('idx_business_types_enabled', table_name='business_types')
     op.drop_index('idx_business_types_code', table_name='business_types')

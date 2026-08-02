@@ -10,9 +10,8 @@ from sqlalchemy.orm import Session
 
 from backend.db import get_db
 from backend.security import auth_rate_limiter, get_client_ip
-from backend.services.company_access_control import RefundIdentityOperationBusyError
+from backend.services.company_access_control import IdentityOperationBusyError
 from backend.services.password_reset_service import confirm_password_reset, request_password_reset
-from backend.runtime_settings import APP_NAME
 
 
 router = APIRouter()
@@ -22,11 +21,6 @@ AUTH_PASSWORD_RESET_RATE_WINDOW_SECONDS = int(os.getenv("AUTH_PASSWORD_RESET_RAT
 AUTH_PASSWORD_RESET_CONFIRM_RATE_LIMIT = int(os.getenv("AUTH_PASSWORD_RESET_CONFIRM_RATE_LIMIT", "10"))
 AUTH_PASSWORD_RESET_CONFIRM_RATE_WINDOW_SECONDS = int(os.getenv("AUTH_PASSWORD_RESET_CONFIRM_RATE_WINDOW_SECONDS", "3600"))
 PASSWORD_RESET_BUSY_MESSAGE = "Serviço temporariamente indisponível. Tente novamente em instantes."
-PASSWORD_RESET_REFUND_BLOCKED_MESSAGE = (
-    f"Não é possível redefinir a senha porque o acesso à {APP_NAME} está bloqueado "
-    "devido à solicitação de reembolso. Se acredita que isso é um engano, "
-    "entre em contato com o suporte."
-)
 
 
 class PasswordResetRequest(BaseModel):
@@ -40,7 +34,7 @@ class PasswordResetConfirm(BaseModel):
 
 
 def _password_reset_busy_response(
-    exc: RefundIdentityOperationBusyError,
+    exc: IdentityOperationBusyError,
 ) -> HTTPException:
     return HTTPException(
         status_code=503,
@@ -63,18 +57,13 @@ async def request_password_reset_endpoint(
         window_seconds=AUTH_PASSWORD_RESET_RATE_WINDOW_SECONDS,
     )
     try:
-        result = request_password_reset(
+        request_password_reset(
             db,
             email=str(data.email),
             requested_ip=get_client_ip(request),
         )
-    except RefundIdentityOperationBusyError as exc:
+    except IdentityOperationBusyError as exc:
         raise _password_reset_busy_response(exc) from None
-    if result.refund_blocked:
-        raise HTTPException(
-            status_code=423,
-            detail=PASSWORD_RESET_REFUND_BLOCKED_MESSAGE,
-        )
     return {"message": "Se o email existir, enviaremos instruções para redefinir sua senha."}
 
 
@@ -98,6 +87,6 @@ async def confirm_password_reset_endpoint(
             new_password=data.new_password,
             confirm_password=data.confirm_password,
         )
-    except RefundIdentityOperationBusyError as exc:
+    except IdentityOperationBusyError as exc:
         raise _password_reset_busy_response(exc) from None
     return {"message": "Senha redefinida com sucesso."}

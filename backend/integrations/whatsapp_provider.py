@@ -49,11 +49,11 @@ from backend.integrations.waha_sdk import get_client as get_waha_client, WAHAExc
 
 @contextmanager
 def _locked_company_remote_operation(company_id: int, db: Optional[Session]):
-    """Hold the refund-compatible company lock through a remote side effect."""
+    """Hold the company mutation lock through a remote side effect."""
     from backend.services.company_access_control import (
         CompanyOperationallyBlockedError,
         ensure_company_operational,
-        lock_refund_entities_for_mutation,
+        lock_entities_for_mutation,
     )
 
     owns_session = db is None
@@ -64,7 +64,7 @@ def _locked_company_remote_operation(company_id: int, db: Optional[Session]):
 
     try:
         try:
-            lock_refund_entities_for_mutation(db, company_ids=[company_id])
+            lock_entities_for_mutation(db, company_ids=[company_id])
             ensure_company_operational(db, company_id)
         except CompanyOperationallyBlockedError as exc:
             raise HTTPException(

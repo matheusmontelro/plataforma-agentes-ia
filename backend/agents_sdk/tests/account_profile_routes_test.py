@@ -42,6 +42,7 @@ def test_update_account_profile_does_not_change_master_email():
     assert response.email == "master@example.com"
     assert response.billing_profile["email"] == "master@example.com"
     assert response.billing_profile["full_name"] == "Master Atualizado"
+    assert response.profile_complete is True
     assert client.billing_profile["email"] == "master@example.com"
     assert db.commits == 1
     assert db.refreshed == [client]

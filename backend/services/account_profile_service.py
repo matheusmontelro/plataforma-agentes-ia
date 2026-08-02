@@ -1,4 +1,4 @@
-"""Helpers for the master account billing profile used by payment providers."""
+"""Helpers for the master account profile."""
 
 from __future__ import annotations
 

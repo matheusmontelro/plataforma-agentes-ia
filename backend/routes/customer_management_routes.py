@@ -42,7 +42,7 @@ from backend.services.company_access_control import (
     CompanyOperationalLockBusyError,
     CompanyOperationallyBlockedError,
     ensure_company_operational,
-    lock_refund_entities_for_mutation,
+    lock_entities_for_mutation,
 )
 
 
@@ -1019,8 +1019,8 @@ def _lock_customer_delete_scope(
     company_id: int,
     customer_id: int,
 ) -> Customer:
-    """Fence customer deletion against refund scope/link mutations."""
-    lock_refund_entities_for_mutation(
+    """Fence customer deletion against concurrent scope/link mutations."""
+    lock_entities_for_mutation(
         db,
         company_ids=[company_id],
         client_ids=[client_id],
@@ -1199,7 +1199,7 @@ async def link_customer_managed_company(
     _: Client = Depends(verify_client_or_bearer_api_key),
 ):
     managed_company_id = int(payload.managed_company_id)
-    lock_refund_entities_for_mutation(
+    lock_entities_for_mutation(
         db,
         company_ids=[company_id, managed_company_id],
         client_ids=[client_id],
@@ -1295,7 +1295,7 @@ async def unlink_customer_managed_company(
         raise HTTPException(status_code=404, detail="Vínculo não encontrado")
 
     managed_company_id = int(discovered_link.managed_company_id)
-    lock_refund_entities_for_mutation(
+    lock_entities_for_mutation(
         db,
         company_ids=[company_id, managed_company_id],
         client_ids=[client_id],

@@ -9,8 +9,8 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///./test.db")
 os.environ.setdefault("ENVIRONMENT", "development")
 
 from backend.models import Client, PasswordResetToken
-from backend.services import company_access_control
 from backend.services import password_reset_service as service
+from backend.services.company_access_control import IdentityOperationBusyError
 
 
 class FakeQuery:
@@ -88,35 +88,6 @@ def test_request_password_reset_creates_token_and_sends_generic_email(monkeypatc
     assert db.reset_token.requested_ip == "10.0.0.1"
     assert sent_payload["to_email"] == "owner@example.com"
     assert "raw-reset-token" in sent_payload["reset_url"]
-
-
-def test_request_password_reset_reports_refund_block_without_token_or_email(monkeypatch):
-    client = Client(
-        id=7,
-        email="owner@example.com",
-        company_id=3,
-    )
-    db = FakeDB(client=client)
-
-    monkeypatch.setattr(service, "is_email_refund_blocked", lambda *_args: True)
-    monkeypatch.setattr(
-        service,
-        "send_password_reset_email",
-        lambda **_kwargs: pytest.fail("email não deve ser enviado"),
-    )
-
-    result = service.request_password_reset(
-        db,
-        email="OWNER@example.com",
-        requested_ip="10.0.0.1",
-    )
-
-    assert result.account_found is False
-    assert result.email_sent is False
-    assert result.email_skipped is True
-    assert result.refund_blocked is True
-    assert db.reset_token is None
-    assert db.commits == 0
 
 
 def test_password_setup_token_respects_minimum_ttl(monkeypatch):
@@ -198,8 +169,8 @@ def test_password_reset_holds_identity_lock_through_commit_and_email(monkeypatch
         events.append("email-side-effect")
         return SimpleNamespace(sent=True, skipped=False)
 
-    monkeypatch.setattr(service, "refund_identity_operation_lock", identity_lock)
-    monkeypatch.setattr(service, "lock_refund_entities_for_mutation", entity_lock)
+    monkeypatch.setattr(service, "account_identity_operation_lock", identity_lock)
+    monkeypatch.setattr(service, "lock_entities_for_mutation", entity_lock)
     monkeypatch.setattr(service, "send_password_reset_email", send_email)
     monkeypatch.setattr(service.secrets, "token_urlsafe", lambda size: "raw-reset-token")
     db.commit = commit
@@ -257,8 +228,8 @@ def test_password_reset_confirmation_orders_identity_before_entities_and_token_c
         events.append("password-commit")
         original_commit()
 
-    monkeypatch.setattr(service, "refund_identity_operation_lock", identity_lock)
-    monkeypatch.setattr(service, "lock_refund_entities_for_mutation", entity_lock)
+    monkeypatch.setattr(service, "account_identity_operation_lock", identity_lock)
+    monkeypatch.setattr(service, "lock_entities_for_mutation", entity_lock)
     monkeypatch.setattr(service, "hash_password", lambda password: f"hashed:{password}")
     db.commit = commit
 
@@ -278,52 +249,29 @@ def test_password_reset_confirmation_orders_identity_before_entities_and_token_c
 
 
 def test_confirm_reserves_capacity_before_first_token_query(monkeypatch):
-    class ProbeBind:
-        dialect = SimpleNamespace(name="postgresql")
-
-        def __init__(self):
-            self.connect_calls = 0
-
-        def connect(self):
-            self.connect_calls += 1
-            raise AssertionError("pool connection must not be checked out")
-
     class ProbeDB:
         def __init__(self):
-            self.bind = ProbeBind()
             self.query_calls = 0
-
-        def get_bind(self):
-            return self.bind
 
         def query(self, *_args, **_kwargs):
             self.query_calls += 1
             raise AssertionError("token query must not run while capacity is full")
 
-    guard = company_access_control._IdentityOperationGuard(capacity_limit=1)
-    monkeypatch.setattr(
-        company_access_control,
-        "_REFUND_IDENTITY_OPERATION_GUARD",
-        guard,
-    )
+    @contextmanager
+    def busy_reservation(*_args, **_kwargs):
+        raise IdentityOperationBusyError("capacity")
+        yield
+
+    monkeypatch.setattr(service, "account_identity_operation_reservation", busy_reservation)
     db = ProbeDB()
 
-    with company_access_control.refund_identity_operation_reservation(
-        db,
-        "different-token-holder",
-    ):
-        with pytest.raises(
-            company_access_control.RefundIdentityOperationBusyError
-        ) as exc:
-            service.confirm_password_reset(
-                db,
-                token="reset-token-value-long-enough-for-capacity-test",
-                new_password="nova-senha",
-                confirm_password="nova-senha",
-            )
+    with pytest.raises(IdentityOperationBusyError) as exc:
+        service.confirm_password_reset(
+            db,
+            token="reset-token-value-long-enough-for-capacity-test",
+            new_password="nova-senha",
+            confirm_password="nova-senha",
+        )
 
     assert exc.value.reason == "capacity"
     assert db.query_calls == 0
-    assert db.bind.connect_calls == 0
-    assert guard.capacity_in_use == 0
-    assert guard.local_lock_count == 0

@@ -163,7 +163,7 @@ const AccountProfile: React.FC = () => {
   const { isDark } = useTheme();
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const [profile, setProfile] = useState<AccountBillingProfile>(emptyProfile);
-  const [paymentReady, setPaymentReady] = useState(false);
+  const [profileComplete, setProfileComplete] = useState(false);
   const [touchedFields, setTouchedFields] = useState<Set<ProfileField>>(new Set());
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [cepStatus, setCepStatus] = useState<CepStatus>('idle');
@@ -231,7 +231,7 @@ const AccountProfile: React.FC = () => {
     try {
       const response = await getAccountProfile();
       setProfile(formatLoadedProfile(response.billing_profile));
-      setPaymentReady(response.checkout_ready);
+      setProfileComplete(response.profile_complete);
     } catch (loadError) {
       setError(getErrorMessage(loadError, 'Não foi possível carregar o perfil da conta.'));
     } finally {
@@ -277,7 +277,7 @@ const AccountProfile: React.FC = () => {
     try {
       const response = await uploadAccountProfilePhoto(file);
       setProfile(formatLoadedProfile(response.billing_profile));
-      setPaymentReady(response.checkout_ready);
+      setProfileComplete(response.profile_complete);
       setSuccessMessage('Foto atualizada com sucesso.');
     } catch (photoError) {
       setError(getErrorMessage(photoError, 'Não foi possível atualizar a foto.'));
@@ -310,7 +310,7 @@ const AccountProfile: React.FC = () => {
         profile_picture_url: profile.profile_picture_url,
       });
       setProfile(formatLoadedProfile(response.billing_profile));
-      setPaymentReady(response.checkout_ready);
+      setProfileComplete(response.profile_complete);
       setSuccessMessage('Perfil atualizado com sucesso.');
     } catch (saveError) {
       setError(getErrorMessage(saveError, 'Não foi possível atualizar o perfil da conta.'));
@@ -375,8 +375,8 @@ const AccountProfile: React.FC = () => {
                 </p>
                 <h1 className="mt-1 truncate text-2xl font-semibold tracking-tight sm:text-3xl">Perfil da conta</h1>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <span className={agentivePillClass(isDark, paymentReady)}>
-                    {paymentReady ? 'Dados completos' : 'Dados pendentes'}
+                  <span className={agentivePillClass(isDark, profileComplete)}>
+                    {profileComplete ? 'Dados completos' : 'Dados pendentes'}
                   </span>
                   <span className={agentivePillClass(isDark)}>{completedCoreFields}/4 dados principais</span>
                 </div>
@@ -432,7 +432,7 @@ const AccountProfile: React.FC = () => {
                 label="Email da conta"
                 type="email"
                 value={profile.email}
-                hint="Este e-mail identifica a conta e não pode ser alterado depois do cadastro."
+                hint="Este e-mail identifica a conta e não pode ser alterado depois da criação."
                 required
                 disabled
               />
@@ -501,7 +501,7 @@ const AccountProfile: React.FC = () => {
             <div className="mb-5 flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold">Endereço</h2>
-                <p className={`text-sm ${isDark ? 'text-white/55' : 'text-brand/55'}`}>Dados opcionais para compras e identificação fiscal.</p>
+                <p className={`text-sm ${isDark ? 'text-white/55' : 'text-brand/55'}`}>Dados opcionais para completar o perfil e a identificação fiscal.</p>
               </div>
               {cepStatus === 'loading' ? (
                 <Loader2 className={`h-5 w-5 animate-spin ${isDark ? 'text-white/45' : 'text-brand/45'}`} />
@@ -575,9 +575,9 @@ const AccountProfile: React.FC = () => {
                 </div>
               ))}
             </div>
-            <div className={`mt-4 flex items-start gap-2 rounded-2xl border p-3 text-xs ${paymentReady ? isDark ? 'border-emerald-300/20 bg-emerald-300/10 text-emerald-100' : 'border-emerald-500/20 bg-emerald-50 text-emerald-800' : isDark ? 'border-amber-300/20 bg-amber-300/10 text-amber-100' : 'border-amber-500/20 bg-amber-50 text-amber-800'}`}>
-              {paymentReady ? <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0" /> : <Search className="mt-0.5 h-4 w-4 shrink-0" />}
-              <span>{paymentReady ? 'A conta já tem os dados principais completos.' : 'Complete nome, email, celular e CPF/CNPJ para liberar compras sem retrabalho.'}</span>
+            <div className={`mt-4 flex items-start gap-2 rounded-2xl border p-3 text-xs ${profileComplete ? isDark ? 'border-emerald-300/20 bg-emerald-300/10 text-emerald-100' : 'border-emerald-500/20 bg-emerald-50 text-emerald-800' : isDark ? 'border-amber-300/20 bg-amber-300/10 text-amber-100' : 'border-amber-500/20 bg-amber-50 text-amber-800'}`}>
+              {profileComplete ? <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0" /> : <Search className="mt-0.5 h-4 w-4 shrink-0" />}
+              <span>{profileComplete ? 'A conta já tem os dados principais completos.' : 'Complete nome, email, celular e CPF/CNPJ para manter o perfil organizado.'}</span>
             </div>
           </section>
         </form>

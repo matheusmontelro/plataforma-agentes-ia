@@ -77,6 +77,8 @@ python -m backend.scripts.bootstrap_admin \
 
 A senha do primeiro administrador é solicitada de forma oculta; não existe senha padrão. Troque o documento de exemplo pelo CPF ou CNPJ da empresa, usando somente dígitos.
 
+A edição pública não oferece autocadastro. O primeiro acesso é criado pelo bootstrap e as demais contas ou workspaces são administrados por usuários autorizados dentro da plataforma.
+
 Com PostgreSQL e Redis ativos, abra dois terminais:
 
 ```bash

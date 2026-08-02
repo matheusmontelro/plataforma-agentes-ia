@@ -1350,12 +1350,12 @@ def test_generate_configured_agent_audio_preserves_text_when_legacy_allowance_is
     ("response_text", "request_text"),
     [
         (
-            "Esse link é da landing page. Acesse https://app.example.com/register para ativar.",
+            "Esse link é da landing page. Acesse https://app.example.com/login para continuar.",
             "Texto sem link que normalmente poderia virar áudio.",
         ),
         (
             "Segue a explicação por áudio.",
-            "Para ativar, acesse https://app.example.com/register e preencha o cadastro.",
+            "Para continuar, acesse https://app.example.com/login.",
         ),
     ],
 )
@@ -1425,7 +1425,7 @@ def test_record_audio_usage_event_skips_link_blocked_audio(monkeypatch):
             error=flow_agent_workforce_runner.AUDIO_LINK_BLOCKED_ERROR,
         ),
         audio_plan=flow_agent_workforce_runner.AgentAudioDeliveryPlan(
-            request_text="Acesse https://app.example.com/register para ativar.",
+            request_text="Acesse https://app.example.com/login para continuar.",
             trigger_type="audio_requested",
             delivery_mode="llm_requested_full",
         ),

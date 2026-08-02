@@ -175,14 +175,6 @@ if (typeof window !== 'undefined') {
   window.sessionStorage.removeItem('company_whatsapp_config');
 }
 
-interface RegisterResponse {
-  message: string;
-}
-
-interface RegisterEligibilityResponse {
-  eligible: boolean;
-}
-
 interface PasswordResetResponse {
   message: string;
 }
@@ -1345,60 +1337,6 @@ const handleApiError = (error: unknown, defaultMessage: string): never => {
   throw new Error(defaultMessage);
 };
 
-export async function registerUser(
-  email: string,
-  password: string,
-  companyName: string,
-  companyDocument: string,
-  responsibleName: string,
-  responsiblePhone: string,
-  businessTypeId: number = 1,
-  planId?: number
-): Promise<string> {
-  try {
-    const payload = {
-      email,
-      password,
-      company: {
-        cnpj: companyDocument,
-        razao_social: companyName,
-        business_type_id: businessTypeId,
-        responsible_name: responsibleName,
-        responsible_phone: responsiblePhone,
-        ...(planId && { plan_id: planId }),
-      },
-    };
-
-    const response = await api.post<RegisterResponse>('/auth/register', payload, {
-      headers: { 'Content-Type': 'application/json' },
-    });
-    return response.data.message;
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      const message = error.response?.data?.detail || 'Erro ao registrar usuário';
-      throw new Error(message);
-    }
-    throw error;
-  }
-}
-
-export async function checkRegistrationEligibility(email: string): Promise<boolean> {
-  try {
-    const response = await api.post<RegisterEligibilityResponse>(
-      '/auth/register/eligibility',
-      { email },
-      { headers: { 'Content-Type': 'application/json' } },
-    );
-    return response.data.eligible === true;
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      const message = error.response?.data?.detail || 'Não foi possível validar o email agora.';
-      throw new Error(message);
-    }
-    throw error;
-  }
-}
-
 export async function requestPasswordReset(email: string): Promise<string> {
   try {
     const response = await api.post<PasswordResetResponse>(
@@ -2339,38 +2277,6 @@ export interface AICreditTransactionsResponse {
   items: AICreditTransactionItem[];
 }
 
-export interface AICreditPackage {
-  code: string;
-  name: string;
-  credits: number;
-  price_cents: number;
-  currency: string;
-  description: string;
-  features: string[];
-  recommended: boolean;
-  checkout_url?: string | null;
-}
-
-export interface AICreditPackagesResponse {
-  packages: AICreditPackage[];
-  checkout_available: boolean;
-  manual_purchase_available: boolean;
-}
-
-export interface AICreditPackagePurchaseResponse {
-  package: AICreditPackage;
-  wallet: AICreditWalletSummary;
-  transaction: AICreditTransactionItem;
-  manual_purchase: boolean;
-}
-
-export interface AICreditPackageCheckoutResponse {
-  package: AICreditPackage;
-  order_id: string;
-  payment_url: string;
-  provider: 'eduzz' | string;
-}
-
 export async function getAICreditSummary(periodDays = 30): Promise<AICreditSummaryResponse> {
   try {
     const response = await api.get('/api/ai-credits/summary', {
@@ -2405,33 +2311,6 @@ export async function getAICreditTransactions(params?: {
     return response.data;
   } catch (error) {
     handleApiError(error, 'Erro ao carregar extrato de créditos de IA');
-  }
-}
-
-export async function getAICreditPackages(): Promise<AICreditPackagesResponse> {
-  try {
-    const response = await api.get('/api/ai-credits/packages');
-    return response.data;
-  } catch (error) {
-    handleApiError(error, 'Erro ao carregar pacotes de créditos de IA');
-  }
-}
-
-export async function purchaseAICreditPackage(packageCode: string): Promise<AICreditPackagePurchaseResponse> {
-  try {
-    const response = await api.post(`/api/ai-credits/packages/${packageCode}/purchase`);
-    return response.data;
-  } catch (error) {
-    handleApiError(error, 'Erro ao adicionar pacote de créditos de IA');
-  }
-}
-
-export async function createAICreditPackageCheckout(packageCode: string): Promise<AICreditPackageCheckoutResponse> {
-  try {
-    const response = await api.post(`/api/ai-credits/packages/${packageCode}/checkout`);
-    return response.data;
-  } catch (error) {
-    handleApiError(error, 'Erro ao iniciar pagamento de créditos de IA');
   }
 }
 
@@ -2496,7 +2375,7 @@ export interface AccountProfile {
   id: number;
   email: string;
   billing_profile: AccountBillingProfile;
-  checkout_ready: boolean;
+  profile_complete: boolean;
 }
 
 export type AccountBillingProfileUpdate = Partial<AccountBillingProfile>;
@@ -3209,10 +3088,10 @@ export async function createNewCompanyAdmin(
   lifecycle_status?: string;
   trial_credits_granted?: number;
   ai_credit_balance?: number;
-  managed_welcome_email_sent?: boolean;
-  managed_welcome_email_skipped?: boolean;
   password_setup_email_sent?: boolean;
   password_setup_email_skipped?: boolean;
+  password_setup_email_reason?: string;
+  password_setup_url?: string | null;
 }> {
   const formData = new FormData();
   formData.append('client_email', clientEmail);

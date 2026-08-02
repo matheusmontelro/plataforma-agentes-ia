@@ -8,7 +8,7 @@ Este é um modelo de deploy em uma única máquina Linux com PostgreSQL, Redis, 
 Internet -> HTTPS/Nginx -> frontend estático
                        -> FastAPI em 127.0.0.1:8002
 FastAPI/Workers -> PostgreSQL + Redis
-Workers -> WAHA e provedores opcionais
+Workers -> WAHA, SMTP e provedores opcionais
 ```
 
 ## 1. Usuário e diretórios
@@ -173,7 +173,7 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 
-    location ~ ^/(api|auth|webhook|media-sources|payments|health|media|agents-sdk)(/|$) {
+    location ~ ^/(api|auth|webhook|media-sources|health|media|agents-sdk)(/|$) {
         proxy_pass http://127.0.0.1:8002;
         proxy_http_version 1.1;
         proxy_set_header Host $host;

@@ -53,7 +53,7 @@ from backend.services.company_access_control import (
     CompanyOperationalLockBusyError,
     CompanyOperationallyBlockedError,
     ensure_company_operational,
-    lock_refund_entities_for_mutation,
+    lock_entities_for_mutation,
 )
 from backend.runtime_settings import CHAT_MEMORY_DIR
 
@@ -200,8 +200,8 @@ def _is_waha_session_not_found_error(error: Exception) -> bool:
 
 
 def _lock_operational_whatsapp_company(db: Session, company_id: int) -> None:
-    """Serialize a WAHA side effect with refund offboarding and revalidate."""
-    lock_refund_entities_for_mutation(db, company_ids=[company_id])
+    """Serialize a WAHA side effect with company state changes and revalidate."""
+    lock_entities_for_mutation(db, company_ids=[company_id])
     try:
         ensure_company_operational(db, company_id)
     except CompanyOperationallyBlockedError as exc:
@@ -2408,8 +2408,8 @@ def reset_whatsapp_config(user=Depends(get_current_user), db: Session = Depends(
     from backend.integrations.whatsapp_provider import WhatsAppConfig
     from backend.integrations.waha_sdk import get_client as get_waha_client, WAHAException
 
-    # Hold the same company fence used by refund offboarding across the remote
-    # deletion and the local credential cleanup.
+    # Hold the company operational-access fence across the remote deletion and
+    # the local credential cleanup.
     _lock_operational_whatsapp_company(db, int(user.company_id))
     config = WhatsAppConfig.from_company(user.company_id, db)
 

@@ -7,7 +7,6 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-from pydantic import BaseModel, EmailStr
 from typing import Optional
 from backend.auth import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -15,7 +14,6 @@ from backend.auth import (
     REFRESH_TOKEN_EXPIRE_DAYS,
     authenticate_login_and_issue_tokens,
     refresh_access_token,
-    hash_password,
     run_http_auth_off_loop,
     shutdown_auth_executors,
 )
@@ -34,13 +32,12 @@ import sys
 from collections import defaultdict
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import OperationalError, TimeoutError as SQLAlchemyTimeoutError
-from backend.models import Client, Company, ClientCompany, Team, User, BusinessType
+from backend.models import Client, Company, Team, User
 from backend.logging_config import logger
 from backend.metrics import REQUEST_COUNT, REQUEST_LATENCY
 from backend.security import SecurityHeadersMiddleware, auth_rate_limiter, get_allowed_hosts
 import time
 import asyncio
-from secrets import token_hex
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from backend.routes.chat_ws import chat_router
 from backend.routes.media_routes import router as media_router
@@ -77,8 +74,6 @@ from backend.routes.teams import router as teams_router
 from backend.routes.teams import build_user_permissions_payload
 from backend.routes.no_show_routes import router as no_show_router
 from backend.routes.business_types import router as business_types_router
-from backend.webhook_stripe import router as stripe_webhook_router
-from backend.routes.eduzz_payments_routes import router as eduzz_payments_router
 from backend.routes.ai_windows import ai_windows_router
 from backend.routes.chat_optimized import optimized_router
 from backend.routes import ad_campaign_routes
@@ -102,20 +97,9 @@ from backend.routes.agents_sdk_routes import router as agents_sdk_router
 from backend.routes.ai_credits_routes import router as ai_credits_router
 from backend.routes.ai_provider_routes import router as ai_provider_router
 from backend.routes.password_reset_routes import router as password_reset_router
-from backend.routes.internal_refund_access import (
-    router as internal_refund_access_router,
-    shutdown_refund_access_executor,
-    validate_refund_access_internal_config,
-)
-from backend.services.account_profile_service import normalize_account_billing_profile, only_digits
-from backend.services.ai_usage_service import grant_student_registration_ai_credits
-from backend.services.registration_eligibility_service import (
-    ensure_registration_eligibility,
-    run_registration_post_commit_effects,
-)
 from backend.services.company_access_control import (
     CompanyOperationalLockBusyError,
-    RefundIdentityOperationBusyError,
+    IdentityOperationBusyError,
     normalize_account_email,
 )
 
@@ -131,8 +115,6 @@ CSRF_COOKIE_NAME = "csrf_token"
 CSRF_HEADER_NAME = "x-csrf-token"
 AUTH_LOGIN_RATE_LIMIT = int(os.getenv("AUTH_LOGIN_RATE_LIMIT", "10"))
 AUTH_LOGIN_RATE_WINDOW_SECONDS = int(os.getenv("AUTH_LOGIN_RATE_WINDOW_SECONDS", "300"))
-AUTH_REGISTER_RATE_LIMIT = int(os.getenv("AUTH_REGISTER_RATE_LIMIT", "5"))
-AUTH_REGISTER_RATE_WINDOW_SECONDS = int(os.getenv("AUTH_REGISTER_RATE_WINDOW_SECONDS", "3600"))
 AUTH_REFRESH_RATE_LIMIT = int(os.getenv("AUTH_REFRESH_RATE_LIMIT", "120"))
 AUTH_REFRESH_RATE_WINDOW_SECONDS = int(os.getenv("AUTH_REFRESH_RATE_WINDOW_SECONDS", "300"))
 AUTH_BUSY_MESSAGE = "Serviço temporariamente indisponível. Tente novamente em instantes."
@@ -166,7 +148,7 @@ app.add_exception_handler(
     transient_lock_busy_exception_handler,
 )
 app.add_exception_handler(
-    RefundIdentityOperationBusyError,
+    IdentityOperationBusyError,
     transient_lock_busy_exception_handler,
 )
 app.add_exception_handler(
@@ -408,8 +390,6 @@ app.include_router(users_router, prefix="/api", tags=["users"])
 app.include_router(teams_router, prefix="/api", tags=["teams"])
 app.include_router(business_types_router, tags=["Business Types"])
 app.include_router(no_show_router, prefix="/api/agenda")
-app.include_router(stripe_webhook_router, prefix="/payments", tags=["stripe-webhook"])
-app.include_router(eduzz_payments_router, prefix="/payments", tags=["eduzz-payments"])
 app.include_router(ai_windows_router, prefix="/api", tags=["AI Windows"])
 app.include_router(optimized_router, prefix="/api/chat-optimized")
 app.include_router(ad_campaign_routes.router, prefix="", tags=["Ad Campaign Metrics"])
@@ -453,32 +433,9 @@ app.include_router(referral_campaigns_router, prefix="/api", tags=["Referral Cam
 # Rotas públicas (com autenticação por API Key)
 app.include_router(company_setup_router, prefix="/api/public/setup", tags=["Public Setup"])
 app.include_router(password_reset_router, prefix="/auth", tags=["password-reset"])
-app.include_router(internal_refund_access_router)
-
-# Meta Conversions API
-
-
-class CompanyData(BaseModel):
-    cnpj: str
-    razao_social: str
-    business_type_id: int = 1  # Default: business_company
-    responsible_name: Optional[str] = None
-    responsible_phone: Optional[str] = None
-
-class RegisterData(BaseModel):
-    email: EmailStr
-    password: str
-    company: Optional[CompanyData] = None
-    clinic: Optional[CompanyData] = None  # compatibilidade temporária com payload antigo
-
-
-class RegisterEligibilityData(BaseModel):
-    email: EmailStr
-
 
 @app.on_event("startup")
 async def startup_event():
-    validate_refund_access_internal_config()
     await start_manager()
 
 @app.on_event("startup")
@@ -488,151 +445,8 @@ def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     await stop_manager()
-    shutdown_refund_access_executor()
     shutdown_auth_executors()
     logger.info("Aplicação encerrando...")
-
-@app.options("/auth/register")
-async def register_options():
-    return Response(status_code=200)
-
-
-@app.options("/auth/register/eligibility")
-async def register_eligibility_options():
-    return Response(status_code=200)
-
-
-@app.post("/auth/register/eligibility")
-async def register_eligibility(request: Request, data: RegisterEligibilityData, db: Session = Depends(get_db)):
-    await auth_rate_limiter.check(
-        request,
-        "auth.register.eligibility",
-        data.email,
-        limit=AUTH_REGISTER_RATE_LIMIT,
-        window_seconds=AUTH_REGISTER_RATE_WINDOW_SECONDS,
-    )
-    ensure_registration_eligibility(str(data.email), db)
-    return {"eligible": True}
-
-
-@app.post("/auth/register")
-async def register(request: Request, data: RegisterData, db: Session = Depends(get_db)):
-    await auth_rate_limiter.check(
-        request,
-        "auth.register",
-        data.email,
-        limit=AUTH_REGISTER_RATE_LIMIT,
-        window_seconds=AUTH_REGISTER_RATE_WINDOW_SECONDS,
-    )
-    company_data = data.company or data.clinic
-    if company_data is None:
-        raise HTTPException(status_code=400, detail="Dados da empresa são obrigatórios")
-
-    normalized_email = normalize_account_email(str(data.email))
-    company_document = only_digits(company_data.cnpj)
-    try:
-        billing_profile = normalize_account_billing_profile(
-            {
-                "full_name": company_data.responsible_name,
-                "email": normalized_email,
-                "cellphone": company_data.responsible_phone,
-                "document": company_document,
-            },
-            fallback_email=normalized_email,
-            require_core=True,
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-    logger.info(f"Registrando novo usuário: {data.email}, "
-                f"Empresa: {company_data.razao_social}, Documento: {company_document}")
-
-    # 1) Verifica se o email já existe e se pertence a um aluno liberado para cadastro
-    registration_purchase = ensure_registration_eligibility(normalized_email, db)
-
-    # 1.5) Valida se o business_type_id existe
-    business_type = db.query(BusinessType).filter(
-        BusinessType.id == company_data.business_type_id
-    ).first()
-
-    if not business_type:
-        logger.warning(f"Business type ID {company_data.business_type_id} não encontrado")
-        raise HTTPException(status_code=400, detail="Tipo de negócio inválido")
-
-    # 3) Gera API key única
-    api_key = token_hex(32)  # Gera uma string hexadecimal de 64 caracteres (32 bytes)
-    logger.info("API key gerada para o novo usuário")
-
-    # 4) Cria o cliente (usuário) com a API key
-    hashed = hash_password(data.password)
-    api_key_field = "api_" + "key"
-    created_company_id = None
-    created_company_name = company_data.razao_social
-    created_client_id = None
-    try:
-        # 2) Cria a empresa
-        new_company = Company(
-            name=company_data.razao_social,
-            cnpj=company_document,
-            business_type_id=company_data.business_type_id,
-        )
-        db.add(new_company)
-        db.flush()
-        created_company_id = int(new_company.id)
-        created_company_name = new_company.name
-        logger.info(f"Empresa criada com ID: {new_company.id}, Tipo: {business_type.name}")
-
-        new_client = Client(
-            email=normalized_email,
-            password=hashed,
-            company_id=new_company.id,
-            ownership_company_id=new_company.id,
-            billing_profile=billing_profile,
-        )
-        setattr(new_client, api_key_field, api_key)
-        db.add(new_client)
-        db.flush()
-        created_client_id = int(new_client.id)
-        logger.info(f"Usuário criado com ID: {new_client.id}, Associado à Empresa ID: {new_company.id}")
-
-        # 5) Cria a associação na tabela intermediária client_companies
-        assoc = ClientCompany(
-            client_id=new_client.id,
-            company_id=new_company.id
-        )
-        db.add(assoc)
-        db.flush()
-        logger.info(f"Associação inserida em client_companies (client_id={new_client.id}, company_id={new_company.id})")
-
-        grant_student_registration_ai_credits(
-            db=db,
-            company_id=new_company.id,
-            client_id=new_client.id,
-            email=normalized_email,
-            registration_product_id=registration_purchase.product_id,
-            registration_sale_id=registration_purchase.sale_id,
-        )
-        logger.info("Bônus inicial de créditos de IA concedido para empresa ID: %s", new_company.id)
-
-        db.commit()
-    except Exception as exc:
-        db.rollback()
-        logger.exception("Erro ao registrar novo usuário com créditos iniciais: %s", exc.__class__.__name__)
-        raise HTTPException(status_code=500, detail="Erro ao registrar usuário") from exc
-
-    run_registration_post_commit_effects(
-        db,
-        client_id=created_client_id,
-        company_id=created_company_id,
-        email=normalized_email,
-        company_name=created_company_name,
-        billing_profile=billing_profile,
-    )
-
-    # 6) Retorna a mensagem de sucesso sem expor a API key ao navegador
-    return {
-        "message": "Usuário e empresa registrados com sucesso"
-    }
 
 def _authentication_unavailable(exc: Exception) -> HTTPException:
     retry_after_seconds = max(
@@ -733,7 +547,7 @@ def _authenticate_login_request(
         AuthenticationInfrastructureError,
         CompanyOperationalLockBusyError,
         HTTPException,
-        RefundIdentityOperationBusyError,
+        IdentityOperationBusyError,
     ):
         if db is not None:
             db.rollback()
@@ -781,7 +595,7 @@ async def login(
     except (
         AuthenticationInfrastructureError,
         CompanyOperationalLockBusyError,
-        RefundIdentityOperationBusyError,
+        IdentityOperationBusyError,
     ) as exc:
         raise _authentication_unavailable(exc) from None
     except HTTPException:
@@ -837,7 +651,7 @@ async def refresh_token_endpoint(
     except (
         AuthenticationInfrastructureError,
         CompanyOperationalLockBusyError,
-        RefundIdentityOperationBusyError,
+        IdentityOperationBusyError,
     ) as exc:
         raise _authentication_unavailable(exc) from None
     except HTTPException as exc:

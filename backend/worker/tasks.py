@@ -584,8 +584,8 @@ def enviar_passo_followup(
             }
         ).fetchone()
 
-        # CANCELED is terminal across refund restore. A delayed broker message
-        # must never reactivate it after the company becomes active again.
+        # CANCELED remains terminal across company reactivation. A delayed
+        # broker message must never reactivate it after access is restored.
         if existing_execution and existing_execution.status == "CANCELED":
             logger.info(
                 f"[TASK:{execution_trace_id}] Passo {step_number} cancelado; "

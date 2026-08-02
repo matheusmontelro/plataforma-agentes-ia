@@ -17,14 +17,15 @@ from sqlalchemy.orm import Session
 
 from backend.auth import hash_password
 from backend.models import Client, Company, PasswordResetToken, User
-from backend.services.brevo_email_service import get_public_app_origin, send_password_reset_email
 from backend.services.company_access_control import (
-    is_account_refund_blocked,
-    is_email_refund_blocked,
-    lock_refund_entities_for_mutation,
+    account_identity_operation_lock,
+    account_identity_operation_reservation,
+    lock_entities_for_mutation,
     normalize_account_email,
-    refund_identity_operation_lock,
-    refund_identity_operation_reservation,
+)
+from backend.services.transactional_email_service import (
+    get_public_app_origin,
+    send_password_reset_email,
 )
 
 
@@ -36,7 +37,6 @@ class PasswordResetRequestResult:
     account_found: bool
     email_sent: bool
     email_skipped: bool = False
-    refund_blocked: bool = False
 
 
 @dataclass(frozen=True)
@@ -84,8 +84,6 @@ def _token_ttl_minutes(*, min_ttl_minutes: Optional[int] = None) -> int:
 
 def _find_account_by_email(db: Session, email: str) -> Optional[Any]:
     normalized_email = _normalize_email(email)
-    if is_email_refund_blocked(db, normalized_email):
-        return None
     client = (
         db.query(Client)
         .join(Company, Company.id == Client.ownership_company_id)
@@ -111,14 +109,10 @@ def _find_account_by_email(db: Session, email: str) -> Optional[Any]:
         )
         .first()
     )
-    if user and is_account_refund_blocked(db, user):
-        return None
     return user
 
 
 def _lock_and_validate_account(db: Session, account: Any) -> Optional[Any]:
-    if is_account_refund_blocked(db, account):
-        return None
     if isinstance(account, Client):
         return (
             db.query(Client)
@@ -148,19 +142,19 @@ def _lock_and_validate_account(db: Session, account: Any) -> Optional[Any]:
     return None
 
 
-def _lock_account_refund_entities(db: Session, account: Any) -> None:
+def _lock_account_entities(db: Session, account: Any) -> None:
     if isinstance(account, Client):
         ownership_company_id = (
             getattr(account, "ownership_company_id", None)
             or account.company_id
         )
-        lock_refund_entities_for_mutation(
+        lock_entities_for_mutation(
             db,
             company_ids=[int(ownership_company_id)],
             client_ids=[int(account.id)],
         )
     elif isinstance(account, User):
-        lock_refund_entities_for_mutation(
+        lock_entities_for_mutation(
             db,
             company_ids=[int(account.company_id)],
             client_ids=[int(account.client_id)],
@@ -196,7 +190,7 @@ def create_password_setup_token_for_account(
 
     def _create_locked() -> PasswordSetupTokenResult:
         nonlocal account
-        _lock_account_refund_entities(db, account)
+        _lock_account_entities(db, account)
         account = _lock_and_validate_account(db, account)
         if not account:
             raise ValueError("Conta inativa para definição de senha")
@@ -221,21 +215,13 @@ def create_password_setup_token_for_account(
 
     if _identity_lock_held:
         return _create_locked()
-    with refund_identity_operation_lock(db, normalized_email):
+    with account_identity_operation_lock(db, normalized_email):
         return _create_locked()
 
 
 def request_password_reset(db: Session, *, email: str, requested_ip: Optional[str] = None) -> PasswordResetRequestResult:
     normalized_email = _normalize_email(email)
-    with refund_identity_operation_lock(db, normalized_email):
-        if is_email_refund_blocked(db, normalized_email):
-            return PasswordResetRequestResult(
-                account_found=False,
-                email_sent=False,
-                email_skipped=True,
-                refund_blocked=True,
-            )
-
+    with account_identity_operation_lock(db, normalized_email):
         account = _find_account_by_email(db, normalized_email)
         if not account:
             return PasswordResetRequestResult(
@@ -304,7 +290,7 @@ def confirm_password_reset(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Senhas não conferem")
 
     token_hash = _hash_reset_token(token.strip())
-    with refund_identity_operation_reservation(
+    with account_identity_operation_reservation(
         db,
         token_hash,
     ) as capacity_reservation:
@@ -327,7 +313,7 @@ def confirm_password_reset(
             # the identity lock below.
             rollback()
 
-        with refund_identity_operation_lock(
+        with account_identity_operation_lock(
             db,
             normalized_email,
             reservation=capacity_reservation,
@@ -371,9 +357,9 @@ def confirm_password_reset(
                     detail="Token inválido ou expirado",
                 )
 
-            _lock_account_refund_entities(db, account_snapshot)
+            _lock_account_entities(db, account_snapshot)
             account = _lock_and_validate_account(db, account_snapshot)
-            if not account or is_account_refund_blocked(db, account):
+            if not account:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Token inválido ou expirado",

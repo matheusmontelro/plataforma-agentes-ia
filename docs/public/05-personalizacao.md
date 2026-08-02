@@ -90,7 +90,7 @@ Confira pelo menos:
 
 - título da aba e manifesto/PWA;
 - páginas estáticas de OAuth, privacidade e termos;
-- login, cadastro e recuperação de senha;
+- login e recuperação de senha;
 - sidebar desktop e navegação mobile;
 - dashboards e páginas vazias;
 - temas claro e escuro;

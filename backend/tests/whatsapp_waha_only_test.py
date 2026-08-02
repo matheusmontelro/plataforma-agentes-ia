@@ -226,12 +226,12 @@ def test_save_webhook_audit_persists_resolved_company_and_waha_message_id():
     assert db.commits == 1
 
 
-def test_whatsapp_config_blocks_refund_pending_company():
+def test_whatsapp_config_blocks_inactive_company():
     db = _FakeDB(
         SimpleNamespace(
             waha_enabled=True,
             waha_session_name="sessao-teste",
-            operational_status="refund_pending",
+            operational_status="inactive",
         )
     )
 

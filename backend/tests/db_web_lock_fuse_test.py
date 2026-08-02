@@ -2,14 +2,12 @@ import asyncio
 import os
 import time
 import uuid
-from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import NullPool
 
 
 os.environ.setdefault(
@@ -19,7 +17,6 @@ os.environ.setdefault(
 
 from backend import db as db_module  # noqa: E402
 from backend.services import company_access_control  # noqa: E402
-from backend.services import refund_access_service  # noqa: E402
 from backend.worker import db_pool_lifecycle  # noqa: E402
 
 
@@ -119,9 +116,9 @@ def test_web_identity_lock_is_try_only_and_exposes_retry_after():
     session = _FakePostgresSession([False], web=True)
 
     with pytest.raises(
-        company_access_control.RefundIdentityOperationBusyError
+        company_access_control.IdentityOperationBusyError
     ) as error:
-        company_access_control.lock_refund_identity_for_creation(
+        company_access_control.lock_account_identity_for_creation(
             session,
             "owner@example.com",
         )
@@ -138,7 +135,7 @@ def test_web_entity_lock_is_try_only_and_exposes_retry_after():
     with pytest.raises(
         company_access_control.CompanyOperationalLockBusyError
     ) as error:
-        company_access_control.lock_refund_entities_for_mutation(
+        company_access_control.lock_entities_for_mutation(
             session,
             company_ids=[7],
             client_ids=[11],
@@ -154,15 +151,15 @@ def test_web_entity_lock_is_try_only_and_exposes_retry_after():
     assert error.value.retry_after_seconds >= 1
 
 
-def test_unmarked_sessionlocal_paths_keep_blocking_refund_locks():
+def test_unmarked_sessionlocal_paths_keep_blocking_identity_locks():
     identity_session = _FakePostgresSession()
     entity_session = _FakePostgresSession()
 
-    company_access_control.lock_refund_identity_for_creation(
+    company_access_control.lock_account_identity_for_creation(
         identity_session,
         "owner@example.com",
     )
-    company_access_control.lock_refund_entities_for_mutation(
+    company_access_control.lock_entities_for_mutation(
         entity_session,
         company_ids=[7],
     )
@@ -174,37 +171,6 @@ def test_unmarked_sessionlocal_paths_keep_blocking_refund_locks():
         assert "pg_try_advisory_xact_lock" not in statement
 
 
-def test_internal_refund_timeout_is_applied_only_from_session_info():
-    class _LockConnection:
-        def __init__(self):
-            self.executed = []
-
-        def execute(self, statement, parameters):
-            self.executed.append((str(statement), parameters))
-
-    configured_connection = _LockConnection()
-    configured_db = SimpleNamespace(
-        info={
-            refund_access_service.REFUND_ACCESS_LOCK_TIMEOUT_MS_INFO_KEY: 2500,
-        }
-    )
-    refund_access_service._apply_refund_access_lock_timeout(
-        configured_connection,
-        configured_db,
-    )
-    assert "set_config('lock_timeout'" in configured_connection.executed[0][0]
-    assert configured_connection.executed[0][1] == {
-        "lock_timeout": "2500ms",
-    }
-
-    celery_connection = _LockConnection()
-    refund_access_service._apply_refund_access_lock_timeout(
-        celery_connection,
-        SimpleNamespace(info={}),
-    )
-    assert celery_connection.executed == []
-
-
 @pytest.mark.skipif(
     not os.getenv("TEST_POSTGRES_DATABASE_URL"),
     reason="TEST_POSTGRES_DATABASE_URL not configured",
@@ -213,7 +179,7 @@ def test_real_postgres_shared_holder_web_trylock_and_worker_wait_keep_heartbeat(
     """Integration proof for the application-level deadlock shape.
 
     A shared WebSocket admission fence stays open across awaits. A marked web
-    request must fail immediately, while an unmarked refund/worker session
+    request must fail immediately, while an unmarked worker session
     deliberately waits until that shared holder is released. The event-loop
     heartbeat must continue throughout both paths.
     """
@@ -227,7 +193,7 @@ def test_real_postgres_shared_holder_web_trylock_and_worker_wait_keep_heartbeat(
     web_request = db_module.mark_session_as_web_request(Session())
     worker = Session()
     try:
-        company_access_control.try_lock_refund_entities_for_access(
+        company_access_control.try_lock_entities_for_access(
             holder,
             company_ids=[company_id],
         )
@@ -249,7 +215,7 @@ def test_real_postgres_shared_holder_web_trylock_and_worker_wait_keep_heartbeat(
             with pytest.raises(
                 company_access_control.CompanyOperationalLockBusyError
             ):
-                company_access_control.lock_refund_entities_for_mutation(
+                company_access_control.lock_entities_for_mutation(
                     web_request,
                     company_ids=[company_id],
                 )
@@ -266,7 +232,7 @@ def test_real_postgres_shared_holder_web_trylock_and_worker_wait_keep_heartbeat(
 
             worker_wait = asyncio.create_task(
                 asyncio.to_thread(
-                    company_access_control.lock_refund_entities_for_mutation,
+                    company_access_control.lock_entities_for_mutation,
                     worker,
                     company_ids=[company_id],
                 )
@@ -372,16 +338,16 @@ def test_real_postgres_web_lock_timeout_fuses_implicit_blocking_lock():
     not os.getenv("TEST_POSTGRES_DATABASE_URL"),
     reason="TEST_POSTGRES_DATABASE_URL not configured",
 )
-def test_real_postgres_refund_main_session_lock_timeout_is_reapplied():
-    """The refund data transaction is bounded, not only its lock connection."""
+def test_real_postgres_bounded_session_lock_timeout_is_reapplied():
+    """A configured data transaction remains bounded across rollbacks."""
     engine = create_engine(
         os.environ["TEST_POSTGRES_DATABASE_URL"],
         pool_pre_ping=True,
     )
     Session = sessionmaker(bind=engine, autocommit=False, autoflush=False)
-    lock_key = f"agentive-test:refund-main-lock-fuse:{uuid.uuid4()}"
+    lock_key = f"platform-test:bounded-main-lock:{uuid.uuid4()}"
     holder = Session()
-    refund_db = db_module.mark_session_with_transaction_lock_timeout(
+    bounded_db = db_module.mark_session_with_transaction_lock_timeout(
         Session(),
         100,
     )
@@ -396,7 +362,7 @@ def test_real_postgres_refund_main_session_lock_timeout_is_reapplied():
 
         started = time.monotonic()
         with pytest.raises(OperationalError) as timeout_error:
-            refund_db.execute(
+            bounded_db.execute(
                 text(
                     "SELECT pg_advisory_xact_lock("
                     "hashtextextended(:lock_key, 0))"
@@ -407,9 +373,9 @@ def test_real_postgres_refund_main_session_lock_timeout_is_reapplied():
         assert getattr(timeout_error.value.orig, "pgcode", None) == "55P03"
 
         # The timeout aborts the current transaction. A new transaction must
-        # receive the same fuse because refund processing commits in phases.
-        refund_db.rollback()
-        configured_timeout_ms = refund_db.execute(
+        # receive the same fuse after a rollback.
+        bounded_db.rollback()
+        configured_timeout_ms = bounded_db.execute(
             text(
                 "SELECT EXTRACT(EPOCH FROM "
                 "current_setting('lock_timeout')::interval) * 1000"
@@ -417,143 +383,9 @@ def test_real_postgres_refund_main_session_lock_timeout_is_reapplied():
         ).scalar()
         assert int(configured_timeout_ms) == 100
     finally:
-        for session in (holder, refund_db):
+        for session in (holder, bounded_db):
             try:
                 session.rollback()
             finally:
                 session.close()
         engine.dispose()
-
-
-@pytest.mark.skipif(
-    not os.getenv("TEST_POSTGRES_DATABASE_URL"),
-    reason="TEST_POSTGRES_DATABASE_URL not configured",
-)
-def test_real_postgres_partial_refund_timeout_releases_all_session_locks(
-    monkeypatch,
-):
-    """A mid-entity timeout must not leak identity/entity locks into the pool."""
-    url = os.environ["TEST_POSTGRES_DATABASE_URL"]
-    target_engine = create_engine(
-        url,
-        pool_size=1,
-        max_overflow=0,
-        pool_pre_ping=True,
-    )
-    blocker_engine = create_engine(url, poolclass=NullPool)
-    verifier_engine = create_engine(url, poolclass=NullPool)
-    TargetSession = sessionmaker(
-        bind=target_engine,
-        autocommit=False,
-        autoflush=False,
-    )
-    unique = str(uuid.uuid4())
-    command = refund_access_service.RefundAccessCommand(
-        event_id=f"timeout-event-{unique}",
-        idempotency_key=f"timeout-idempotency-{unique}",
-        invoice_id=f"timeout-invoice-{unique}",
-        email=f"timeout-{unique}@example.com",
-        state="refund_pending",
-        occurred_at=datetime.now(timezone.utc),
-        source="eduzz",
-    )
-    entity_lock_keys = [
-        f"refund-access:entity:company:{unique}:1",
-        f"refund-access:entity:company:{unique}:2",
-    ]
-    identity_lock_keys = sorted(
-        {
-            f"refund-access:invoice:{command.source}:{command.invoice_id}",
-            f"refund-access:event:{command.event_id}",
-            f"refund-access:idempotency:{command.idempotency_key}",
-            "refund-access:email:"
-            f"{refund_access_service._email_hash(command.email)}",
-        }
-    )
-    scope = refund_access_service.AccountScope(
-        root_client_id=0,
-        company_ids=(),
-        client_ids=(),
-        user_ids=(),
-    )
-    monkeypatch.setattr(
-        refund_access_service,
-        "_resolve_command_scope",
-        lambda _db, _command: scope,
-    )
-    monkeypatch.setattr(
-        refund_access_service,
-        "_command_entity_lock_keys",
-        lambda _db, _command, _scope: list(entity_lock_keys),
-    )
-    monkeypatch.setattr(
-        refund_access_service,
-        "_process_refund_access_locked",
-        lambda *_args, **_kwargs: pytest.fail(
-            "processing must not run after lock timeout"
-        ),
-    )
-
-    target_db = TargetSession()
-    target_db.info[
-        refund_access_service.REFUND_ACCESS_LOCK_TIMEOUT_MS_INFO_KEY
-    ] = 100
-    blocker = blocker_engine.connect()
-    try:
-        with target_engine.connect() as initial_target:
-            target_backend_pid = int(
-                initial_target.execute(text("SELECT pg_backend_pid()")).scalar()
-            )
-
-        blocker.execute(
-            text("SELECT pg_advisory_lock(hashtextextended(:lock_key, 0))"),
-            {"lock_key": entity_lock_keys[1]},
-        )
-
-        started = time.monotonic()
-        with pytest.raises(OperationalError) as timeout_error:
-            refund_access_service.process_refund_access(target_db, command)
-        assert time.monotonic() - started < 1.0
-        assert getattr(timeout_error.value.orig, "pgcode", None) == "55P03"
-
-        # pool_size=1 guarantees this is the same physical connection that
-        # timed out. Keep it checked out while an independent connection probes
-        # every lock acquired before the timeout.
-        with target_engine.connect() as reused_target:
-            assert int(
-                reused_target.execute(text("SELECT pg_backend_pid()")).scalar()
-            ) == target_backend_pid
-            with verifier_engine.connect() as verifier:
-                for lock_key in [*identity_lock_keys, entity_lock_keys[0]]:
-                    acquired = bool(
-                        verifier.execute(
-                            text(
-                                "SELECT pg_try_advisory_lock("
-                                "hashtextextended(:lock_key, 0))"
-                            ),
-                            {"lock_key": lock_key},
-                        ).scalar()
-                    )
-                    assert acquired is True, lock_key
-                    verifier.execute(
-                        text(
-                            "SELECT pg_advisory_unlock("
-                            "hashtextextended(:lock_key, 0))"
-                        ),
-                        {"lock_key": lock_key},
-                    )
-    finally:
-        try:
-            blocker.execute(
-                text(
-                    "SELECT pg_advisory_unlock("
-                    "hashtextextended(:lock_key, 0))"
-                ),
-                {"lock_key": entity_lock_keys[1]},
-            )
-        finally:
-            blocker.close()
-        target_db.close()
-        target_engine.dispose()
-        blocker_engine.dispose()
-        verifier_engine.dispose()

@@ -21,11 +21,11 @@ O backend lê `backend/.env` quando executado pelo fluxo local. Em produção, u
 | `DATABASE_URL` | conexão PostgreSQL |
 | `PGPASSWORD` ou mecanismo equivalente | autenticação do PostgreSQL sem senha no exemplo versionado |
 | `JWT_SECRET_KEY` | assinatura dos tokens de sessão |
-| `REFUND_ACCESS_INTERNAL_KEY` | chave isolada da rota interna de eventos de acesso; mínimo de 32 caracteres em produção |
 | `PUBLIC_API_KEY` | autenticação das rotas públicas; obrigatória em produção |
 | `PUBLIC_API_SECRET` | assinatura das rotas públicas; obrigatória em produção |
 | `MONITORING_TOKEN` | protege health detalhado e métricas |
 | `PUBLIC_BASE_URL` | origem pública usada em URLs geradas |
+| `PUBLIC_APP_URL` | origem pública do frontend usada em links enviados por e-mail |
 | `REDIS_URL` | cache e broker padrão |
 | `WEBSOCKET_REDIS_URL` | Pub/Sub de eventos em tempo real |
 | `CELERY_BROKER_URL` | broker dos workers |
@@ -33,7 +33,7 @@ O backend lê `backend/.env` quando executado pelo fluxo local. Em produção, u
 | `ALLOWED_HOSTS` | hosts aceitos pela API |
 | `ADMIN_EMAILS` | contas autorizadas a funções administrativas internas |
 
-Gere `JWT_SECRET_KEY`, `REFUND_ACCESS_INTERNAL_KEY`, `PUBLIC_API_KEY`, `PUBLIC_API_SECRET` e `MONITORING_TOKEN` separadamente. Não copie segredos entre desenvolvimento e produção.
+Gere `JWT_SECRET_KEY`, `PUBLIC_API_KEY`, `PUBLIC_API_SECRET` e `MONITORING_TOKEN` separadamente. Não copie segredos entre desenvolvimento e produção.
 
 `CLIENT_TOKEN` é opcional e existe apenas para rotas ou provedores legados que ainda o exigem. Deixe vazio quando esses recursos não forem usados; se precisar habilitá-lo, gere um segredo exclusivo para essa instalação.
 
@@ -114,18 +114,37 @@ A instalação padrão não inclui CUDA, Torch nem Whisper local. A transcriçã
 servidor. Adicione uma pilha local de ML somente se também implementar e validar
 esse modo de execução para o hardware dos alunos.
 
+## E-mail transacional por SMTP
+
+O backend usa SMTP genérico para recuperação de senha e, quando aplicável, envio do acesso inicial de um novo workspace. Nenhum provedor comercial específico é necessário.
+
+```dotenv
+PUBLIC_APP_URL=http://localhost:3004
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USERNAME=
+SMTP_PASSWORD=
+SMTP_FROM_EMAIL=
+SMTP_FROM_NAME=SUA_EMPRESA
+SMTP_STARTTLS=true
+```
+
+O envio é habilitado somente quando `SMTP_HOST` e `SMTP_FROM_EMAIL` estão preenchidos. `SMTP_USERNAME` e `SMTP_PASSWORD` são opcionais, mas devem ser configurados juntos quando o servidor exigir autenticação. Use `SMTP_STARTTLS=true` com a porta STARTTLS indicada pelo servidor, normalmente 587. Valores inválidos mantêm TLS ligado; autenticação é recusada quando TLS está desligado. Defina `SMTP_STARTTLS=false` somente para SMTP sem autenticação em uma rede interna confiável; a implementação não suporta SMTPS/SSL implícito.
+
+`PUBLIC_APP_URL` deve apontar para a origem do frontend, sem caminho adicional, para que os links de recuperação de senha abram a instalação correta. Nunca coloque a senha SMTP em variáveis `VITE_*`.
+
+Quando um novo workspace exigir definição de senha e o SMTP não entregar a mensagem, a interface mostra ao administrador autorizado um link temporário somente na confirmação atual. Copie-o e envie por um canal seguro; não registre esse link em logs, tickets ou documentação.
+
 ## Integrações opcionais
 
 Configure apenas as integrações que usar:
 
-- Brevo: e-mails transacionais e recuperação de senha.
 - Google OAuth/Calendar: conexão de calendários.
-- Stripe ou Eduzz: recursos opcionais de checkout/créditos existentes na edição pública.
 - Serviços de voz: chaves e vozes do provedor escolhido.
 
 Uma integração desabilitada não deve receber valores fictícios parecidos com credenciais reais. Prefira campo vazio e valide no ambiente de homologação antes de produção.
 
-O primeiro administrador não depende de checkout externo: use `backend.scripts.bootstrap_admin`. Já o fluxo de autocadastro público da revisão atual valida uma compra no Eduzz. Sem `EDUZZ_ACCESS_TOKEN` e `EDUZZ_REGISTRATION_PRODUCT_IDS`, esse autocadastro fica indisponível; mantenha-o fora da navegação pública ou configure produtos da sua própria conta antes de divulgá-lo.
+A edição pública não contém checkout externo nem autocadastro. Crie o primeiro administrador com `backend.scripts.bootstrap_admin`; depois, use uma conta autorizada para administrar outras contas e workspaces.
 
 ## Permissões de arquivos
 

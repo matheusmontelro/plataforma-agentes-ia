@@ -20,8 +20,6 @@ MONEY_PLACES = Decimal("0.00000001")
 PERCENT_PLACES = Decimal("0.0001")
 ONE_THOUSAND = Decimal("1000")
 ONE_MILLION = Decimal("1000000")
-STUDENT_REGISTRATION_BONUS_CREDITS = Decimal("5000")
-STUDENT_REGISTRATION_BONUS_SOURCE = "student_registration_bonus"
 MANAGED_WORKSPACE_TRIAL_BONUS_SOURCE = "managed_workspace_trial_bonus"
 MANAGED_WORKSPACE_TRIAL_CREDITS_BY_DAYS: Dict[int, Decimal] = {
     0: ZERO,
@@ -531,43 +529,6 @@ def grant_managed_workspace_trial_ai_credits(
             "owner_company_id": int(owner_company_id) if owner_company_id is not None else None,
             "customer_id": int(customer_id) if customer_id is not None else None,
             "managed_link_id": int(managed_link_id) if managed_link_id is not None else None,
-        },
-    )
-    db.add(transaction)
-    db.flush()
-    return wallet, transaction
-
-
-def grant_student_registration_ai_credits(
-    *,
-    db: Session,
-    company_id: int,
-    client_id: Optional[int] = None,
-    email: Optional[str] = None,
-    registration_product_id: Optional[str] = None,
-    registration_sale_id: Optional[str] = None,
-) -> tuple[AICreditWallet, AICreditTransaction]:
-    wallet = _get_or_create_wallet(db, company_id)
-    credits = _quantize(STUDENT_REGISTRATION_BONUS_CREDITS)
-    current_balance = Decimal(str(wallet.balance_credits or 0))
-    current_granted = Decimal(str(wallet.total_granted_credits or 0))
-    wallet.balance_credits = _quantize(current_balance + credits)
-    wallet.total_granted_credits = _quantize(current_granted + credits)
-
-    transaction = AICreditTransaction(
-        company_id=company_id,
-        wallet_id=wallet.id,
-        transaction_type="credit",
-        amount_credits=credits,
-        balance_after=wallet.balance_credits,
-        description="Bônus inicial de cadastro para aluno",
-        transaction_metadata={
-            "source": STUDENT_REGISTRATION_BONUS_SOURCE,
-            "credits": int(STUDENT_REGISTRATION_BONUS_CREDITS),
-            "client_id": int(client_id) if client_id is not None else None,
-            "email": email,
-            "registration_product_id": registration_product_id,
-            "registration_sale_id": registration_sale_id,
         },
     )
     db.add(transaction)

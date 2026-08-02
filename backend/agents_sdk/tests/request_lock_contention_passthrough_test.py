@@ -14,7 +14,7 @@ from backend.models import Client
 from backend.routes import contacts_import, customer_management_routes, users, webhook
 from backend.services.company_access_control import (
     CompanyOperationalLockBusyError,
-    RefundIdentityOperationReservation,
+    IdentityOperationReservation,
 )
 
 
@@ -74,16 +74,16 @@ def test_change_password_preserves_transient_contention(
         email="staff@example.com",
     )
     db = _DB(target)
-    monkeypatch.setattr(users, "_refund_identity_locks", lambda *_args, **_kwargs: nullcontext())
+    monkeypatch.setattr(users, "_account_identity_locks", lambda *_args, **_kwargs: nullcontext())
     monkeypatch.setattr(
         users,
-        "_revalidate_internal_user_email_delivery",
+        "_revalidate_internal_user_mutation",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(transient_contention),
     )
 
     with pytest.raises(type(transient_contention)) as exc:
         asyncio.run(
-            users._change_user_password_with_refund_reservation(
+            users._change_user_password_with_identity_reservation(
                 user_id=11,
                 password_data={
                     "new_password": "new-password",
@@ -91,7 +91,7 @@ def test_change_password_preserves_transient_contention(
                 },
                 db=db,
                 current_user=master,
-                reservation=RefundIdentityOperationReservation(
+                reservation=IdentityOperationReservation(
                     _guard=None,
                     _active=False,
                 ),
@@ -116,7 +116,7 @@ def test_delete_contact_preserves_transient_contention(
     db = _DB(contact)
     monkeypatch.setattr(
         contacts_import,
-        "lock_refund_entities_for_mutation",
+        "lock_entities_for_mutation",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(transient_contention),
     )
 

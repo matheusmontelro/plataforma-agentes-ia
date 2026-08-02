@@ -91,7 +91,7 @@ WEBSOCKET_AUTH_EXECUTOR_WORKERS = _bounded_int_env(
 WEBSOCKET_STOP_TIMEOUT_SECONDS = 5.0
 
 # A holder worker opens, validates, keeps and closes each SQLAlchemy Session on
-# the same thread. It is isolated from AnyIO/refund workers and waits only on a
+# the same thread. It is isolated from AnyIO worker threads and waits only on a
 # threading.Event while the event loop performs the bounded socket send.
 _FENCE_PREPARE_EXECUTOR = ThreadPoolExecutor(
     max_workers=WEBSOCKET_AUTH_EXECUTOR_WORKERS,
@@ -977,7 +977,7 @@ class ConnectionManager:
                 self._redis_company_overflows.pop(company_id, None)
 
     async def _dispatch_redis_item(self, item: _RedisDispatchItem) -> None:
-        """Deliver every step, retrying transient refund contention in place."""
+        """Deliver every step, retrying transient access-fence contention."""
         while item.step_index < len(item.steps):
             phone, payload = item.steps[item.step_index]
             async with self._redis_dispatch_semaphore:
@@ -1149,9 +1149,9 @@ class ConnectionManager:
     ) -> bool:
         """Register first, then recheck access while revocation can see the socket.
 
-        If a refund commits before the recheck, the check rejects and removes
-        the socket. If it commits after the recheck, the socket is already in
-        `connections` and the revocation broadcast closes it.
+        If access is revoked before the recheck, the check rejects and removes
+        the socket. If revocation happens after the recheck, the socket is
+        already in `connections` and the revocation broadcast closes it.
         """
         normalized_phones = list(dict.fromkeys(str(phone) for phone in phones))
         for phone in normalized_phones:
@@ -1211,16 +1211,15 @@ class ConnectionManager:
     ):
         """Try a shared DB fence and return its active epoch.
 
-        The PostgreSQL acquisition is intentionally non-blocking.  A refund
-        continues to use the matching exclusive entity locks, so a successful
-        shared fence linearizes the principal checks and socket send with that
-        refund without ever waiting synchronously in the event loop.
+        The PostgreSQL acquisition is intentionally non-blocking. A successful
+        shared fence linearizes principal checks and socket sends with company
+        state changes without waiting synchronously in the event loop.
         """
         from backend.db import SessionLocal, mark_session_as_web_request
         from backend.services.company_access_control import (
             ensure_company_operational,
             get_company_operational_epoch,
-            try_lock_refund_entities_for_access,
+            try_lock_entities_for_access,
         )
 
         client_ids = set()
@@ -1242,7 +1241,7 @@ class ConnectionManager:
         db = mark_session_as_web_request(SessionLocal())
         try:
             normalized_company_id = int(company_id)
-            try_lock_refund_entities_for_access(
+            try_lock_entities_for_access(
                 db,
                 company_ids=[normalized_company_id],
                 client_ids=client_ids,
@@ -1470,7 +1469,6 @@ class ConnectionManager:
             return True
 
         from backend.models import Client, User
-        from backend.services.company_access_control import is_account_refund_blocked
 
         try:
             client_id = int(connection.client_id)
@@ -1482,7 +1480,6 @@ class ConnectionManager:
         if (
             client is None
             or not bool(client.is_active)
-            or is_account_refund_blocked(db, client)
         ):
             return False
 
@@ -1508,7 +1505,6 @@ class ConnectionManager:
             and user.is_active
             and int(user.auth_token_version or 0)
             == int(connection.auth_token_version)
-            and not is_account_refund_blocked(db, user)
         )
 
     async def _detach_stale_company_connections(
@@ -1618,7 +1614,7 @@ class ConnectionManager:
             )
             access_confirmed = True
         except CompanyOperationalLockBusyError:
-            # A concurrent refund owns the exclusive fence.  Its revocation
+            # A concurrent access mutation owns the exclusive fence. Its revocation
             # event (or the next reconciliation pass) decides socket state;
             # transient contention itself is not proof of revocation.
             logger.info(
@@ -1868,7 +1864,7 @@ class ConnectionManager:
                     candidates,
                 )
             except CompanyOperationalLockBusyError:
-                # Busy is a transient refund race, not evidence that every
+                # Busy is a transient access-mutation race, not evidence that every
                 # local socket was revoked.  Never convert it into code 4003.
                 logger.info(
                     "[WebSocket] Broadcast adiado por fence ocupado company_id=%s",

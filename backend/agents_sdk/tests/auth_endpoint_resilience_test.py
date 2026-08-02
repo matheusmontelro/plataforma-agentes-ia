@@ -139,7 +139,7 @@ def test_login_busy_returns_retry_after_without_cookies(monkeypatch):
     assert _set_cookie_headers(response) == []
 
 
-def test_login_refund_block_propagates_without_cookies(monkeypatch):
+def test_login_operational_block_propagates_without_cookies(monkeypatch):
     monkeypatch.setattr(main.auth_rate_limiter, "check", _allow_rate_limit)
     monkeypatch.setattr(
         main,
@@ -147,7 +147,7 @@ def test_login_refund_block_propagates_without_cookies(monkeypatch):
         lambda **_kwargs: (_ for _ in ()).throw(
             HTTPException(
                 status_code=423,
-                detail=auth.REFUND_LOGIN_BLOCKED_MESSAGE,
+                detail=auth.OPERATIONAL_ACCESS_BLOCKED_MESSAGE,
             )
         ),
     )
@@ -392,7 +392,7 @@ def test_login_payload_failure_rolls_back_pending_staff_session(monkeypatch):
     "busy_error",
     [
         main.CompanyOperationalLockBusyError(3),
-        main.RefundIdentityOperationBusyError("external_identity"),
+        main.IdentityOperationBusyError("external_identity"),
     ],
 )
 def test_global_lock_busy_handler_returns_retryable_503(busy_error):

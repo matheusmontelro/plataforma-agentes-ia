@@ -5,7 +5,6 @@ export const BACKEND_PROXY_ROUTES = [
   '/auth',
   '/webhook',
   '/media-sources',
-  '/payments',
   '/health',
   '/ws',
   '/media',

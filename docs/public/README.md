@@ -21,6 +21,7 @@ Este guia foi escrito para uma clonagem nova, sem banco de dados herdado e sem a
 - Redis é obrigatório para o startup do backend e para eventos em tempo real; Celery é necessário para filas e automações assíncronas.
 - WAHA é uma integração separada. O painel e o banco podem ser preparados antes de conectar uma sessão do WhatsApp.
 - Não existe usuário nem senha padrão. O primeiro administrador é criado com um comando interativo e senha oculta.
+- Não existe autocadastro público. Novas contas e workspaces são criados por usuários autorizados.
 - O frontend usa rotas de API no mesmo domínio. Em desenvolvimento, o Vite faz o proxy; em produção, o proxy é responsabilidade do Nginx ou equivalente.
 
 ## O que não acompanha o clone

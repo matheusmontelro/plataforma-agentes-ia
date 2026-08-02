@@ -24,13 +24,12 @@ from backend.db import SessionLocal, get_db, mark_session_as_web_request
 from backend.services.company_access_control import (
     CompanyOperationalLockBusyError,
     CompanyOperationallyBlockedError,
-    RefundIdentityOperationBusyError,
+    IdentityOperationBusyError,
+    account_identity_operation_lock,
+    account_identity_operation_reservation,
     ensure_company_operational,
-    is_account_refund_blocked,
     normalize_account_email,
-    refund_identity_operation_lock,
-    refund_identity_operation_reservation,
-    try_lock_refund_entities_for_access,
+    try_lock_entities_for_access,
 )
 from backend.runtime_settings import APP_NAME
 import logging
@@ -42,9 +41,9 @@ MANAGED_WORKSPACE_TRIAL_EXPIRED_MESSAGE = (
     "Seu período de teste acabou. Fale com o responsável pelo seu acesso para ativar o workspace."
 )
 MANAGED_WORKSPACE_ARCHIVED_MESSAGE = "Este workspace foi arquivado e não pode ser acessado."
-REFUND_LOGIN_BLOCKED_MESSAGE = (
-    f"Seu acesso à {APP_NAME} está bloqueado devido à solicitação de reembolso. "
-    "Se acredita que isso é um engano, entre em contato com o suporte."
+OPERATIONAL_ACCESS_BLOCKED_MESSAGE = (
+    f"Seu acesso à {APP_NAME} está temporariamente indisponível. "
+    "Entre em contato com o administrador da instalação."
 )
 
 # =============================================================================
@@ -225,7 +224,7 @@ def create_tokens_for_user(user: Union[Client, User]) -> Dict[str, str]:
     }
 
 
-def _refund_entity_company_ids_for_account(
+def _operational_company_ids_for_account(
     account: Union[Client, User],
     master: Optional[Client] = None,
 ) -> list[int]:
@@ -245,15 +244,12 @@ def _refund_entity_company_ids_for_account(
 def lock_and_revalidate_account_for_token_issue(
     db: Session,
     account: Union[Client, User],
-    *,
-    refund_blocked_status_code: int = 401,
-    refund_blocked_detail: str = "Usuário inativo",
 ) -> Union[Client, User]:
-    """Fence token/session issuance against a concurrent refund sweep."""
+    """Revalidate account and company state under shared admission locks."""
     if isinstance(account, Client):
-        try_lock_refund_entities_for_access(
+        try_lock_entities_for_access(
             db,
-            company_ids=_refund_entity_company_ids_for_account(account),
+            company_ids=_operational_company_ids_for_account(account),
             client_ids=[int(account.id)],
         )
         db.expire_all()
@@ -267,12 +263,7 @@ def lock_and_revalidate_account_for_token_issue(
         )
         if not current or not current.is_active:
             raise HTTPException(status_code=401, detail="Usuário inativo")
-        if is_account_refund_blocked(db, current):
-            raise HTTPException(
-                status_code=refund_blocked_status_code,
-                detail=refund_blocked_detail,
-            )
-        for company_id in _refund_entity_company_ids_for_account(current):
+        for company_id in _operational_company_ids_for_account(current):
             ensure_company_operational(db, company_id)
         ensure_managed_workspace_access(db, int(current.company_id))
         return current
@@ -283,9 +274,9 @@ def lock_and_revalidate_account_for_token_issue(
             status_code=401,
             detail="Cliente master não encontrado",
         )
-    try_lock_refund_entities_for_access(
+    try_lock_entities_for_access(
         db,
-        company_ids=_refund_entity_company_ids_for_account(account, master),
+        company_ids=_operational_company_ids_for_account(account, master),
         client_ids=[int(master.id)],
         user_ids=[int(account.id)],
     )
@@ -307,12 +298,7 @@ def lock_and_revalidate_account_for_token_issue(
             status_code=401,
             detail="Cliente master não encontrado",
         )
-    if is_account_refund_blocked(db, current):
-        raise HTTPException(
-            status_code=refund_blocked_status_code,
-            detail=refund_blocked_detail,
-        )
-    for company_id in _refund_entity_company_ids_for_account(current, master):
+    for company_id in _operational_company_ids_for_account(current, master):
         ensure_company_operational(db, company_id)
     ensure_managed_workspace_access(db, int(current.company_id))
     return current
@@ -325,7 +311,7 @@ def authenticate_login_and_issue_tokens(
     password: str,
     finalize_transaction: bool = True,
 ) -> LoginAuthenticationResult:
-    """Authenticate and issue credentials inside identity/entity refund fences.
+    """Authenticate and issue credentials inside identity/entity locks.
 
     ``finalize_transaction=False`` lets the HTTP login worker materialize the
     complete response before committing a staff session. Direct callers keep
@@ -333,11 +319,11 @@ def authenticate_login_and_issue_tokens(
     """
     normalized_email = normalize_account_email(email)
     try:
-        with refund_identity_operation_reservation(
+        with account_identity_operation_reservation(
             db,
             f"auth-login:{normalized_email}",
         ) as reservation:
-            with refund_identity_operation_lock(
+            with account_identity_operation_lock(
                 db,
                 normalized_email,
                 reservation=reservation,
@@ -363,23 +349,13 @@ def authenticate_login_and_issue_tokens(
                         status_code=401,
                         detail="Credenciais inválidas",
                     )
-                if is_account_refund_blocked(db, account):
-                    raise HTTPException(
-                        status_code=423,
-                        detail=REFUND_LOGIN_BLOCKED_MESSAGE,
-                    )
                 if not account.is_active:
                     raise HTTPException(
                         status_code=401,
                         detail="Usuário inativo",
                     )
 
-                account = lock_and_revalidate_account_for_token_issue(
-                    db,
-                    account,
-                    refund_blocked_status_code=423,
-                    refund_blocked_detail=REFUND_LOGIN_BLOCKED_MESSAGE,
-                )
+                account = lock_and_revalidate_account_for_token_issue(db, account)
                 tokens = create_tokens_for_user(account)
                 if isinstance(account, Client):
                     result = LoginAuthenticationResult(
@@ -423,7 +399,7 @@ def authenticate_login_and_issue_tokens(
                 return result
     except (
         CompanyOperationalLockBusyError,
-        RefundIdentityOperationBusyError,
+        IdentityOperationBusyError,
     ):
         if finalize_transaction:
             db.rollback()
@@ -433,7 +409,7 @@ def authenticate_login_and_issue_tokens(
             db.rollback()
         raise HTTPException(
             status_code=423,
-            detail=REFUND_LOGIN_BLOCKED_MESSAGE,
+            detail=OPERATIONAL_ACCESS_BLOCKED_MESSAGE,
         ) from None
     except HTTPException:
         if finalize_transaction:
@@ -513,12 +489,8 @@ def get_current_user(
             master = db.query(Client).filter_by(id=user.client_id).first()
             if not master or not master.is_active:
                 raise HTTPException(status_code=401, detail="Cliente master não encontrado")
-            if is_account_refund_blocked(db, user):
-                raise HTTPException(status_code=401, detail="Acesso suspenso")
             ensure_company_operational(db, int(user.company_id))
         else:
-            if is_account_refund_blocked(db, user):
-                raise HTTPException(status_code=401, detail="Acesso suspenso")
             ensure_company_operational(db, int(user.company_id))
 
         return user
@@ -529,7 +501,7 @@ def get_current_user(
     except (
         CompanyOperationalLockBusyError,
         OperationalError,
-        RefundIdentityOperationBusyError,
+        IdentityOperationBusyError,
     ):
         raise
     except Exception as exc:
@@ -674,8 +646,6 @@ def verify_client_or_bearer_api_key(
         ).first()
         if not client:
             raise HTTPException(status_code=401, detail="API Key inválida")
-        if is_account_refund_blocked(db, client):
-            raise HTTPException(status_code=401, detail="API Key inválida")
         ensure_user_can_access_company(client, company_id, db)
         return client
 
@@ -710,8 +680,6 @@ def verify_client_or_bearer_api_key(
 
         if not user:
             raise HTTPException(status_code=401, detail="Usuário não encontrado")
-        if is_account_refund_blocked(db, user):
-            raise HTTPException(status_code=401, detail="Acesso suspenso")
         if not user.is_active:
             raise HTTPException(status_code=401, detail="Usuário inativo")
         if int(payload.get("tv") or 0) != int(user.auth_token_version or 0):
@@ -773,8 +741,6 @@ def get_current_user_ws_sync(token: str, db: Session) -> Dict[str, Any]:
             master = db.query(Client).filter_by(id=user.client_id).first()
             if not master or not master.is_active:
                 raise WebSocketAuthError("Cliente master não encontrado", 4001)
-            if is_account_refund_blocked(db, user):
-                raise WebSocketAuthError("Acesso suspenso", 4003)
             ensure_company_operational(db, int(user.company_id))
         else:
             # Compatibilidade com tokens master antigos emitidos por
@@ -783,8 +749,6 @@ def get_current_user_ws_sync(token: str, db: Session) -> Dict[str, Any]:
             # então uma conta recriada com o mesmo e-mail não herda o token.
             if not company_id:
                 company_id = str(user.company_id)
-            if is_account_refund_blocked(db, user):
-                raise WebSocketAuthError("Acesso suspenso", 4003)
             ensure_user_can_access_company(user, int(company_id), db)
 
         return {
@@ -1119,12 +1083,12 @@ def _refresh_access_token_with_db(
         if not email or not user_id:
             raise HTTPException(status_code=401, detail="Refresh token inválido")
 
-        with refund_identity_operation_reservation(
+        with account_identity_operation_reservation(
             db,
             "auth-refresh:"
             + hashlib.sha256(refresh_token.encode("utf-8")).hexdigest(),
         ) as reservation:
-            with refund_identity_operation_lock(
+            with account_identity_operation_lock(
                 db,
                 email,
                 reservation=reservation,
@@ -1157,9 +1121,8 @@ def _refresh_access_token_with_db(
 
                 user = lock_and_revalidate_account_for_token_issue(db, user)
                 # Recheck the version after acquiring the entity fence. A
-                # refund that won before the fence increments it and rejects
-                # this refresh; a refund that wins after issuance revokes the
-                # newly generated token before it can be used.
+                # A concurrent administrative state change that wins before
+                # this fence invalidates the token version before rotation.
                 if int(payload.get("tv") or 0) != int(
                     user.auth_token_version or 0
                 ):
@@ -1172,7 +1135,7 @@ def _refresh_access_token_with_db(
                 return tokens
     except (
         CompanyOperationalLockBusyError,
-        RefundIdentityOperationBusyError,
+        IdentityOperationBusyError,
     ):
         db.rollback()
         raise

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Building2, CheckCircle2, Loader2, Lock } from 'lucide-react';
+import { ArrowLeft, Building2, Check, CheckCircle2, Copy, Loader2, Lock } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext.tsx';
 import {
   AgentiveAlert,
@@ -34,6 +34,9 @@ const NewCompanyAdminPage = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [createdCompanyId, setCreatedCompanyId] = useState<number | null>(null);
+  const [passwordSetupUrl, setPasswordSetupUrl] = useState('');
+  const [passwordSetupUrlCopied, setPasswordSetupUrlCopied] = useState(false);
+  const [passwordSetupCopyError, setPasswordSetupCopyError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [trialDays, setTrialDays] = useState('0');
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerBillingDetail | null>(null);
@@ -114,6 +117,9 @@ const NewCompanyAdminPage = () => {
     setError('');
     setSuccess('');
     setCreatedCompanyId(null);
+    setPasswordSetupUrl('');
+    setPasswordSetupUrlCopied(false);
+    setPasswordSetupCopyError('');
 
     if (customerId && customerLoading) {
       setError('Aguarde o carregamento dos dados do cliente.');
@@ -153,15 +159,21 @@ const NewCompanyAdminPage = () => {
       const trialMessage = data.trial_days
         ? ` Teste de ${data.trial_days} dias registrado${data.trial_ends_at ? ` ate ${new Date(data.trial_ends_at).toLocaleDateString('pt-BR')}` : ''}.`
         : '';
+      const passwordSetupMessage = data.password_setup_email_sent
+        ? ' E-mail para definição de senha enviado.'
+        : data.client_created && data.password_setup_email_skipped
+          ? data.password_setup_url
+            ? ' O e-mail não foi enviado; use o link de definição de senha exibido abaixo.'
+            : ' E-mail para definição de senha não enviado; verifique a configuração SMTP.'
+          : '';
+      setPasswordSetupUrl(
+        !data.password_setup_email_sent && data.password_setup_url
+          ? data.password_setup_url
+          : ''
+      );
       setSuccess(
         customerId
-          ? `${data.message} Workspace vinculado ao cliente selecionado.${trialMessage}${
-              data.managed_welcome_email_sent
-                ? ' E-mail de boas-vindas enviado.'
-                : data.managed_welcome_email_skipped
-                  ? ' E-mail de boas-vindas pendente de configuração.'
-                  : ''
-            }`
+          ? `${data.message} Workspace vinculado ao cliente selecionado.${trialMessage}${passwordSetupMessage}`
           : data.message || 'Nova empresa criada com sucesso!'
       );
       setCreatedCompanyId(data.company_id);
@@ -173,6 +185,19 @@ const NewCompanyAdminPage = () => {
       setError(err.response?.data?.detail || err.message || 'Erro ao criar nova empresa!');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCopyPasswordSetupUrl = async () => {
+    if (!passwordSetupUrl) return;
+
+    setPasswordSetupCopyError('');
+    try {
+      await navigator.clipboard.writeText(passwordSetupUrl);
+      setPasswordSetupUrlCopied(true);
+    } catch {
+      setPasswordSetupUrlCopied(false);
+      setPasswordSetupCopyError('Não foi possível copiar automaticamente. Selecione o link e copie manualmente.');
     }
   };
 
@@ -246,6 +271,48 @@ const NewCompanyAdminPage = () => {
                     <CheckCircle2 className="h-4 w-4" />
                     Voltar ao cliente
                   </button>
+                )}
+              </div>
+            </AgentiveAlert>
+          )}
+
+          {passwordSetupUrl && (
+            <AgentiveAlert
+              variant="warning"
+              title="Envie o link de acesso ao cliente"
+              className="mb-5"
+              onClose={() => {
+                setPasswordSetupUrl('');
+                setPasswordSetupUrlCopied(false);
+                setPasswordSetupCopyError('');
+              }}
+            >
+              <div className="space-y-3">
+                <p>
+                  O SMTP não entregou o e-mail. Copie este link agora e envie ao cliente por um canal seguro; ele aparece somente nesta confirmação.
+                </p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input
+                    type="text"
+                    value={passwordSetupUrl}
+                    readOnly
+                    aria-label="Link temporário para definição de senha"
+                    className={agentiveInputClass(isDark, 'min-w-0 flex-1 font-mono text-xs')}
+                    onFocus={(event) => event.currentTarget.select()}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleCopyPasswordSetupUrl()}
+                    className={agentiveSecondaryButtonClass(isDark, 'shrink-0')}
+                  >
+                    {passwordSetupUrlCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    {passwordSetupUrlCopied ? 'Copiado' : 'Copiar link'}
+                  </button>
+                </div>
+                {passwordSetupCopyError && (
+                  <p className={isDark ? 'text-xs text-amber-100' : 'text-xs text-amber-800'}>
+                    {passwordSetupCopyError}
+                  </p>
                 )}
               </div>
             </AgentiveAlert>

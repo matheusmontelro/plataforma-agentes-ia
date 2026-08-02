@@ -21,7 +21,7 @@ from backend.models import (
 from backend.services.company_access_control import (
     CompanyOperationallyBlockedError,
     ensure_company_operational,
-    lock_refund_entities_for_mutation,
+    lock_entities_for_mutation,
 )
 from backend.services.leads_with_custom_fields_service import (
     LeadsWithCustomFieldsService,
@@ -631,7 +631,7 @@ async def deletar_lead(
     """
     logger.info(f"[deletar_lead] client_id={client_id}, company_id={company_id}, lead_id={lead_id}")
 
-    lock_refund_entities_for_mutation(
+    lock_entities_for_mutation(
         db,
         company_ids=[company_id],
         client_ids=[client_id],

@@ -5,30 +5,22 @@ from typing import List, Union
 from pydantic import BaseModel, EmailStr, validator
 from backend.db import get_db
 from backend.models import User, Client, Company, ClientCompany, Team
-from backend.auth import get_current_user, hash_password, verify_password
-from backend.services.brevo_email_service import (
-    send_internal_user_password_changed_email,
-    send_internal_user_welcome_email,
-)
+from backend.auth import get_current_user, hash_password
 from backend.services.company_access_control import (
     AccountEmailCollisionError,
     CompanyOperationalLockBusyError,
-    RefundIdentityOperationBusyError,
-    RefundIdentityOperationReservation,
-    ensure_company_operational,
-    is_account_refund_blocked,
-    is_email_refund_blocked,
+    IdentityOperationBusyError,
+    IdentityOperationReservation,
+    account_identity_operation_lock,
+    account_identity_operation_reservation,
     lock_and_validate_account_email_available,
-    lock_refund_entities_for_mutation,
+    lock_entities_for_mutation,
     normalize_account_email,
-    refund_identity_operation_lock,
-    refund_identity_operation_reservation,
 )
-from contextlib import ExitStack, contextmanager, nullcontext
+from contextlib import ExitStack, contextmanager
 from datetime import datetime
 import logging
-from types import SimpleNamespace
-from typing import Callable, Iterator
+from typing import Iterator
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -155,8 +147,8 @@ async def validate_email_available(
         ) from exc
 
 
-def _refund_operation_busy_http(
-    exc: RefundIdentityOperationBusyError,
+def _identity_operation_busy_http(
+    exc: IdentityOperationBusyError,
 ) -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -172,13 +164,13 @@ def _rollback_if_available(db: Session) -> None:
 
 
 @contextmanager
-def _refund_identity_locks(
+def _account_identity_locks(
     db: Session,
     emails: List[str],
     *,
-    reservation: RefundIdentityOperationReservation,
+    reservation: IdentityOperationReservation,
 ) -> Iterator[None]:
-    """Hold every refund identity that can invalidate an internal-user email."""
+    """Hold every account identity involved in an internal-user mutation."""
     normalized_emails = sorted(
         {
             normalized
@@ -189,7 +181,7 @@ def _refund_identity_locks(
     with ExitStack() as stack:
         for email in normalized_emails:
             stack.enter_context(
-                refund_identity_operation_lock(
+                account_identity_operation_lock(
                     db,
                     email,
                     reservation=reservation,
@@ -198,7 +190,7 @@ def _refund_identity_locks(
         yield
 
 
-def _revalidate_internal_user_email_delivery(
+def _revalidate_internal_user_mutation(
     db: Session,
     *,
     master_id: int,
@@ -206,7 +198,7 @@ def _revalidate_internal_user_email_delivery(
     company_id: int,
     user_email: str,
 ) -> tuple[Client, User, Company] | None:
-    lock_refund_entities_for_mutation(
+    lock_entities_for_mutation(
         db,
         company_ids=[int(company_id)],
         client_ids=[int(master_id)],
@@ -245,109 +237,11 @@ def _revalidate_internal_user_email_delivery(
         or not user
         or not bool(user.is_active)
         or not company
-        or is_account_refund_blocked(db, master)
-        or is_account_refund_blocked(db, user)
+        or company.operational_status != "active"
     ):
         return None
 
-    ensure_company_operational(db, int(company_id))
     return master, user, company
-
-
-def _deliver_internal_user_email_after_commit(
-    db: Session,
-    *,
-    master_id: int,
-    master_email: str,
-    user_id: int,
-    user_email: str,
-    company_id: int,
-    reservation: RefundIdentityOperationReservation,
-    delivery: Callable[[SimpleNamespace, str | None, str], object],
-    log_label: str,
-    identity_locks_held: bool = False,
-) -> bool:
-    """Fail closed after commit while preserving the already-saved mutation."""
-    try:
-        # The provider must never run with a database transaction open. The
-        # session-level identity locks remain held across the network call.
-        _rollback_if_available(db)
-        identity_context = (
-            nullcontext()
-            if identity_locks_held
-            else _refund_identity_locks(
-                db,
-                [master_email, user_email],
-                reservation=reservation,
-            )
-        )
-        with identity_context:
-            state = _revalidate_internal_user_email_delivery(
-                db,
-                master_id=master_id,
-                user_id=user_id,
-                company_id=company_id,
-                user_email=user_email,
-            )
-            if state is None:
-                _rollback_if_available(db)
-                logger.info(
-                    "%s suprimido após bloqueio de reembolso user_id=%s",
-                    log_label,
-                    user_id,
-                )
-                return False
-
-            current_master, current_user, current_company = state
-            user_snapshot = SimpleNamespace(
-                id=int(current_user.id),
-                email=str(current_user.email),
-                name=str(current_user.name),
-            )
-            current_company_name = getattr(current_company, "name", None)
-            current_master_email = str(current_master.email)
-            _rollback_if_available(db)
-
-            email_result = delivery(
-                user_snapshot,
-                current_company_name,
-                current_master_email,
-            )
-            if getattr(email_result, "sent", False):
-                logger.info("%s enviado para user_id=%s", log_label, user_id)
-                return True
-            if getattr(email_result, "skipped", False):
-                logger.info(
-                    "%s ignorado para user_id=%s motivo=%s",
-                    log_label,
-                    user_id,
-                    getattr(email_result, "reason", None),
-                )
-            else:
-                logger.warning(
-                    "%s não enviado para user_id=%s motivo=%s",
-                    log_label,
-                    user_id,
-                    getattr(email_result, "reason", None),
-                )
-            return False
-    except RefundIdentityOperationBusyError:
-        _rollback_if_available(db)
-        logger.info(
-            "%s suprimido por contenção de reembolso user_id=%s",
-            log_label,
-            user_id,
-        )
-        return False
-    except Exception as exc:
-        _rollback_if_available(db)
-        logger.warning(
-            "%s suprimido por falha de revalidação user_id=%s erro=%s",
-            log_label,
-            user_id,
-            exc.__class__.__name__,
-        )
-        return False
 
 
 @router.get("/users/", response_model=List[UserResponse], tags=["users"])
@@ -381,37 +275,33 @@ async def create_user(
 ):
     reservation_key = f"create-internal-user:{normalize_account_email(user_data.email)}"
     try:
-        with refund_identity_operation_reservation(
+        with account_identity_operation_reservation(
             db,
             reservation_key,
-        ) as reservation:
-            return await _create_user_with_refund_reservation(
+        ):
+            return await _create_user_with_identity_reservation(
                 user_data=user_data,
                 db=db,
                 current_user=current_user,
-                reservation=reservation,
             )
-    except RefundIdentityOperationBusyError as exc:
+    except IdentityOperationBusyError as exc:
         _rollback_if_available(db)
-        raise _refund_operation_busy_http(exc) from exc
+        raise _identity_operation_busy_http(exc) from exc
 
 
-async def _create_user_with_refund_reservation(
+async def _create_user_with_identity_reservation(
     *,
     user_data: UserCreate,
     db: Session,
     current_user: Union[Client, User],
-    reservation: RefundIdentityOperationReservation,
 ):
     """Cria um novo usuário vinculado ao client atual"""
     master = await validate_master_access(current_user)
 
-    # Serializa a criação com snapshots de offboarding. O lock de company é
-    # obtido antes do lock de client, na mesma ordem global do fluxo de
-    # reembolso; a identidade do novo staff impede recriação sobre tombstone.
+    # Serializa a criação e mantém a ordem global company -> client.
     normalized_email = await validate_email_available(db, str(user_data.email))
-    lock_refund_entities_for_mutation(db, company_ids=[user_data.company_id])
-    lock_refund_entities_for_mutation(db, client_ids=[master.id])
+    lock_entities_for_mutation(db, company_ids=[user_data.company_id])
+    lock_entities_for_mutation(db, client_ids=[master.id])
 
     locked_master = (
         db.query(Client)
@@ -428,14 +318,12 @@ async def _create_user_with_refund_reservation(
     if (
         not locked_master
         or not bool(locked_master.is_active)
-        or is_account_refund_blocked(db, locked_master)
         or not company
         or company.operational_status != "active"
-        or is_email_refund_blocked(db, normalized_email)
     ):
         raise HTTPException(
             status_code=status.HTTP_423_LOCKED,
-            detail="Acesso suspenso durante processamento de reembolso",
+            detail="Acesso suspenso para esta empresa",
         )
 
     # Valida acesso à empresa novamente depois dos locks e do recheck.
@@ -461,30 +349,11 @@ async def _create_user_with_refund_reservation(
         db.refresh(new_user)
         new_user_id = int(new_user.id)
         master_id = int(locked_master.id)
-        master_email = str(locked_master.email)
         logger.info(
             "Usuário master ID=%s criou novo usuário ID=%s para empresa ID=%s",
             master_id,
             new_user_id,
             user_data.company_id,
-        )
-        _deliver_internal_user_email_after_commit(
-            db,
-            master_id=master_id,
-            master_email=master_email,
-            user_id=new_user_id,
-            user_email=normalized_email,
-            company_id=int(user_data.company_id),
-            reservation=reservation,
-            delivery=lambda user_snapshot, company_name, current_master_email: (
-                send_internal_user_welcome_email(
-                    user_snapshot,
-                    temporary_password=user_data.password,
-                    company_name=company_name,
-                    master_email=current_master_email,
-                )
-            ),
-            log_label="Email de acesso",
         )
         return new_user
     except Exception as e:
@@ -620,29 +489,29 @@ async def change_user_password(
     current_user: Union[Client, User] = Depends(get_current_user)
 ):
     try:
-        with refund_identity_operation_reservation(
+        with account_identity_operation_reservation(
             db,
             f"change-internal-user-password:{int(user_id)}",
         ) as reservation:
-            return await _change_user_password_with_refund_reservation(
+            return await _change_user_password_with_identity_reservation(
                 user_id=user_id,
                 password_data=password_data,
                 db=db,
                 current_user=current_user,
                 reservation=reservation,
             )
-    except RefundIdentityOperationBusyError as exc:
+    except IdentityOperationBusyError as exc:
         _rollback_if_available(db)
-        raise _refund_operation_busy_http(exc) from exc
+        raise _identity_operation_busy_http(exc) from exc
 
 
-async def _change_user_password_with_refund_reservation(
+async def _change_user_password_with_identity_reservation(
     *,
     user_id: int,
     password_data: dict,
     db: Session,
     current_user: Union[Client, User],
-    reservation: RefundIdentityOperationReservation,
+    reservation: IdentityOperationReservation,
 ):
     """Altera a senha de um usuário"""
     master = await validate_master_access(current_user)
@@ -678,12 +547,12 @@ async def _change_user_password_with_refund_reservation(
     _rollback_if_available(db)
 
     try:
-        with _refund_identity_locks(
+        with _account_identity_locks(
             db,
             [master_email, user_email],
             reservation=reservation,
         ):
-            state = _revalidate_internal_user_email_delivery(
+            state = _revalidate_internal_user_mutation(
                 db,
                 master_id=master_id,
                 user_id=int(user_id),
@@ -693,7 +562,7 @@ async def _change_user_password_with_refund_reservation(
             if state is None:
                 raise HTTPException(
                     status_code=status.HTTP_423_LOCKED,
-                    detail="Acesso suspenso durante processamento de reembolso",
+                    detail="Acesso suspenso para esta empresa",
                 )
 
             _current_master, current_user, _current_company = state
@@ -706,31 +575,13 @@ async def _change_user_password_with_refund_reservation(
                 user_id,
             )
 
-            _deliver_internal_user_email_after_commit(
-                db,
-                master_id=master_id,
-                master_email=master_email,
-                user_id=int(user_id),
-                user_email=user_email,
-                company_id=company_id,
-                reservation=reservation,
-                delivery=lambda user_snapshot, company_name, _master_email: (
-                    send_internal_user_password_changed_email(
-                        user_snapshot,
-                        new_password=password_data["new_password"],
-                        company_name=company_name,
-                    )
-                ),
-                log_label="Email de alteração de senha",
-                identity_locks_held=True,
-            )
             return current_user
     except HTTPException:
         _rollback_if_available(db)
         raise
-    except RefundIdentityOperationBusyError as exc:
+    except IdentityOperationBusyError as exc:
         _rollback_if_available(db)
-        raise _refund_operation_busy_http(exc) from exc
+        raise _identity_operation_busy_http(exc) from exc
     except (CompanyOperationalLockBusyError, OperationalError):
         _rollback_if_available(db)
         raise

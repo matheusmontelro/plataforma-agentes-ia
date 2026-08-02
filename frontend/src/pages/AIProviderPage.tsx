@@ -211,7 +211,7 @@ const AIProviderPage: React.FC = () => {
         <AgentivePageHeader
           icon={KeyRound}
           title="Provedor de IA"
-          description="Use a chave OpenAI da sua empresa para executar os agentes sem pacotes internos."
+          description="Use a chave OpenAI da sua empresa para executar os agentes com credencial própria."
           badges={(
             <span className={agentivePillClass(isDark, isValidated)}>
               {getStatusLabel(provider)}

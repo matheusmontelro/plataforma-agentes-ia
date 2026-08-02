@@ -58,6 +58,8 @@ Na edição pública, o histórico começa em:
 backend/alembic/versions/0001_initial_public_schema.py
 ```
 
+Essa baseline foi consolidada antes da primeira distribuição estável aos alunos. Se você chegou a criar um banco a partir de uma cópia preliminar anterior, não reutilize esse banco: crie um banco vazio e aplique a `0001` atual. Depois da primeira instalação estável, preserve os dados, faça backup e use somente migrations incrementais.
+
 Liste os heads:
 
 ```bash

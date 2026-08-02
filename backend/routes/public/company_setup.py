@@ -50,7 +50,6 @@ async def create_complete_company(
     try:
         from ...services.company_access_control import (
             AccountEmailCollisionError,
-            is_email_refund_blocked,
             lock_and_validate_account_email_available,
         )
         try:
@@ -60,9 +59,6 @@ async def create_complete_company(
             )
         except AccountEmailCollisionError as exc:
             raise HTTPException(status_code=409, detail="Email já cadastrado") from exc
-        if is_email_refund_blocked(db, normalized_email):
-            raise HTTPException(status_code=423, detail="Acesso deste usuário está suspenso")
-
         # 1.5. Validar business_type_id
         business_type = db.query(BusinessType).filter(
             BusinessType.id == setup_data.company.business_type_id

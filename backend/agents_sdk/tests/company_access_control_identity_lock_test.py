@@ -67,7 +67,7 @@ def _install_guard(monkeypatch, capacity_limit):
     guard = access_control._IdentityOperationGuard(capacity_limit)
     monkeypatch.setattr(
         access_control,
-        "_REFUND_IDENTITY_OPERATION_GUARD",
+        "_IDENTITY_OPERATION_GUARD",
         guard,
     )
     return guard
@@ -78,14 +78,14 @@ def test_same_email_contention_fails_before_another_pool_checkout(monkeypatch):
     bind = FakePostgresBind(try_lock_results=[True])
     db = FakePostgresDB(bind)
 
-    with access_control.refund_identity_operation_lock(
+    with access_control.account_identity_operation_lock(
         db,
         "Owner@Example.com",
     ):
         with pytest.raises(
-            access_control.RefundIdentityOperationBusyError
+            access_control.IdentityOperationBusyError
         ) as exc:
-            with access_control.refund_identity_operation_lock(
+            with access_control.account_identity_operation_lock(
                 db,
                 " owner@example.com ",
             ):
@@ -112,15 +112,15 @@ def test_capacity_reserves_headroom_and_rejects_before_pool_checkout(monkeypatch
     bind = FakePostgresBind(try_lock_results=[True, True])
     db = FakePostgresDB(bind)
 
-    with access_control.refund_identity_operation_lock(db, "first@example.com"):
-        with access_control.refund_identity_operation_lock(
+    with access_control.account_identity_operation_lock(db, "first@example.com"):
+        with access_control.account_identity_operation_lock(
             db,
             "second@example.com",
         ):
             with pytest.raises(
-                access_control.RefundIdentityOperationBusyError
+                access_control.IdentityOperationBusyError
             ) as exc:
-                with access_control.refund_identity_operation_lock(
+                with access_control.account_identity_operation_lock(
                     db,
                     "third@example.com",
                 ):
@@ -139,8 +139,8 @@ def test_external_advisory_lock_contention_is_fail_fast(monkeypatch):
     bind = FakePostgresBind(try_lock_results=[False])
     db = FakePostgresDB(bind)
 
-    with pytest.raises(access_control.RefundIdentityOperationBusyError) as exc:
-        with access_control.refund_identity_operation_lock(
+    with pytest.raises(access_control.IdentityOperationBusyError) as exc:
+        with access_control.account_identity_operation_lock(
             db,
             "owner@example.com",
         ):

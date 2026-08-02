@@ -91,31 +91,7 @@ def test_get_current_user_rejects_inactive_master(monkeypatch):
     assert "Usuário inativo" in str(exc.value.detail)
 
 
-def test_login_with_valid_password_reports_refund_block_before_inactive(monkeypatch):
-    client = Client(
-        id=7,
-        email="owner@example.com",
-        company_id=3,
-        is_active=False,
-        **{"password": "hash"},
-    )
-    db = FakeDB(client=client)
-
-    monkeypatch.setattr(auth, "verify_password", lambda *_args: True)
-    monkeypatch.setattr(auth, "is_account_refund_blocked", lambda *_args: True)
-
-    with pytest.raises(HTTPException) as exc:
-        auth.authenticate_login_and_issue_tokens(
-            db,
-            email="owner@example.com",
-            **{"password": "correct-password"},
-        )
-
-    assert exc.value.status_code == 423
-    assert exc.value.detail == auth.REFUND_LOGIN_BLOCKED_MESSAGE
-
-
-def test_login_with_invalid_password_does_not_reveal_refund_block(monkeypatch):
+def test_login_with_invalid_password_rejects_before_account_state_checks(monkeypatch):
     client = Client(
         id=7,
         email="owner@example.com",
@@ -126,12 +102,6 @@ def test_login_with_invalid_password_does_not_reveal_refund_block(monkeypatch):
     db = FakeDB(client=client)
 
     monkeypatch.setattr(auth, "verify_password", lambda *_args: False)
-    monkeypatch.setattr(
-        auth,
-        "is_account_refund_blocked",
-        lambda *_args: pytest.fail("bloqueio não deve ser consultado antes da senha"),
-    )
-
     with pytest.raises(HTTPException) as exc:
         auth.authenticate_login_and_issue_tokens(
             db,
@@ -143,7 +113,7 @@ def test_login_with_invalid_password_does_not_reveal_refund_block(monkeypatch):
     assert exc.value.detail == "Credenciais inválidas"
 
 
-def test_login_reports_company_refund_block_only_after_valid_password(monkeypatch):
+def test_login_reports_company_operational_block_only_after_valid_password(monkeypatch):
     client = Client(
         id=7,
         email="owner@example.com",
@@ -153,17 +123,16 @@ def test_login_reports_company_refund_block_only_after_valid_password(monkeypatc
     )
     db = FakeDB(client=client)
     monkeypatch.setattr(auth, "verify_password", lambda *_args: True)
-    monkeypatch.setattr(auth, "is_account_refund_blocked", lambda *_args: False)
     monkeypatch.setattr(
         auth,
-        "try_lock_refund_entities_for_access",
+        "try_lock_entities_for_access",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
         auth,
         "ensure_company_operational",
         lambda *_args: (_ for _ in ()).throw(
-            auth.CompanyOperationallyBlockedError(3, "refunded")
+            auth.CompanyOperationallyBlockedError(3, "suspended")
         ),
     )
     monkeypatch.setattr(
@@ -180,7 +149,7 @@ def test_login_reports_company_refund_block_only_after_valid_password(monkeypatc
         )
 
     assert exc.value.status_code == 423
-    assert exc.value.detail == auth.REFUND_LOGIN_BLOCKED_MESSAGE
+    assert exc.value.detail == auth.OPERATIONAL_ACCESS_BLOCKED_MESSAGE
 
 
 def test_refresh_access_token_rejects_user_when_master_is_inactive(monkeypatch):

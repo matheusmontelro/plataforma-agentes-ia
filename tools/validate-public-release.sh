@@ -23,11 +23,31 @@ if [[ -n "$tracked_artifacts" ]]; then
   fail 'artefatos locais ou sensíveis continuam rastreados'
 fi
 
-removed_feature_matches="$(git grep -n -i -E 'support[_-]?chat|support-chat|ThemePreview|/dev/themes|payment[-_ ]?account|bank[-_ ]?account|dados[-_ ]banc[aá]rios|conta de pagamento' -- . ':(exclude)tools/validate-public-release.sh' || true)"
+removed_feature_matches="$(git grep -n -i -E 'support[_-]?chat|support-chat|ThemePreview|/dev/themes|payment[-_ ]?account|bank[-_ ]?account|dados[-_ ]banc[aá]rios|conta de pagamento|checkout[_-]?ready' -- . ':(exclude)tools/validate-public-release.sh' || true)"
 if [[ -n "$removed_feature_matches" ]]; then
   printf '%s\n' "$removed_feature_matches" >&2
   fail 'recursos internos removidos continuam rastreados'
 fi
+
+commercial_provider_matches="$(git grep -n -i -E 'eduzz|brevo|stripe' -- . ':(exclude)tools/validate-public-release.sh' || true)"
+if [[ -n "$commercial_provider_matches" ]]; then
+  printf '%s\n' "$commercial_provider_matches" >&2
+  fail 'integrações comerciais removidas continuam rastreadas'
+fi
+
+[[ ! -e frontend/src/pages/Register.tsx ]] || fail 'tela de autocadastro continua rastreada'
+self_registration_matches="$(git grep -n -E '(/auth)?/register([^[:alnum:]_-]|$)' -- . ':(exclude)tools/validate-public-release.sh' || true)"
+if [[ -n "$self_registration_matches" ]]; then
+  printf '%s\n' "$self_registration_matches" >&2
+  fail 'rota ou link de autocadastro continua rastreado'
+fi
+
+for env_example in .env.development.example .env.production.example; do
+  for smtp_variable in SMTP_HOST SMTP_PORT SMTP_USERNAME SMTP_PASSWORD SMTP_FROM_EMAIL SMTP_FROM_NAME SMTP_STARTTLS; do
+    git grep -q "^${smtp_variable}=" -- "$env_example" \
+      || fail "variável SMTP ausente de ${env_example}: ${smtp_variable}"
+  done
+done
 
 tenant_fallback_matches="$(git grep -n -E '(companyId|company_id)[^\n]{0,100}(\|\||\?\?)[^\n]{0,20}[12]([^0-9]|$)|localStorage\.getItem\([^\n]+\)[^\n]{0,40}\|\|[^0-9]{0,5}1([^0-9]|$)' -- '*.py' '*.ts' '*.tsx' || true)"
 if [[ -n "$tenant_fallback_matches" ]]; then

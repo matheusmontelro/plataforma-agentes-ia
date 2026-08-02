@@ -393,7 +393,7 @@ class Payment(Base):
     payment_date = Column(TIMESTAMP(timezone=True), nullable=True)
 
     # Gateway usado
-    gateway = Column(String(50), nullable=True)  # stripe, pagarme, manual
+    gateway = Column(String(50), nullable=True)  # provedor externo ou manual
     gateway_response = Column(JSONB, server_default='{}', nullable=False)
 
     # Comprovante

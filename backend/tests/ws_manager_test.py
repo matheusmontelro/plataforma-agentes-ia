@@ -13,7 +13,7 @@ from starlette.concurrency import run_in_threadpool as shared_run_in_threadpool
 
 from backend.services.company_access_control import (
     CompanyOperationalLockBusyError,
-    try_lock_refund_entities_for_access,
+    try_lock_entities_for_access,
 )
 from backend.ws_manager import (
     BROADCAST_BUSY,
@@ -205,13 +205,13 @@ def test_publish_revocation_closes_local_socket_and_notifies_other_workers():
     asyncio.run(_publish_revocation_closes_local_before_redis())
 
 
-async def _selective_revocation_closes_refunded_principal_in_shared_workspace():
+async def _selective_revocation_closes_deactivated_principal_in_shared_workspace():
     manager = ConnectionManager()
     manager.redis = _FakeRedis()
-    refunded_socket = _FakeWebSocket()
+    deactivated_socket = _FakeWebSocket()
     third_party_socket = _FakeWebSocket()
     await manager.connect(
-        refunded_socket,
+        deactivated_socket,
         client_id="10",
         company_id=20,
         phone="__global__",
@@ -239,7 +239,7 @@ async def _selective_revocation_closes_refunded_principal_in_shared_workspace():
         user_ids=[11],
     )
 
-    assert refunded_socket.closed == [(4003, "access_revoked")]
+    assert deactivated_socket.closed == [(4003, "access_revoked")]
     assert third_party_socket.closed == []
     assert set(manager.connections[20]) == {"30"}
     channel, raw_payload = manager.redis.published[0]
@@ -253,11 +253,11 @@ async def _selective_revocation_closes_refunded_principal_in_shared_workspace():
 
 def test_selective_revocation_crosses_shared_workspace_without_closing_owner():
     asyncio.run(
-        _selective_revocation_closes_refunded_principal_in_shared_workspace()
+        _selective_revocation_closes_deactivated_principal_in_shared_workspace()
     )
 
 
-async def _redis_failure_does_not_leave_local_refunded_socket_open():
+async def _redis_failure_does_not_leave_local_deactivated_socket_open():
     manager = ConnectionManager()
 
     class _UnavailableRedis:
@@ -281,7 +281,7 @@ async def _redis_failure_does_not_leave_local_refunded_socket_open():
 
 
 def test_redis_failure_is_fail_closed_locally_and_does_not_escape():
-    asyncio.run(_redis_failure_does_not_leave_local_refunded_socket_open())
+    asyncio.run(_redis_failure_does_not_leave_local_deactivated_socket_open())
 
 
 async def _publish_revocation_bounds_stalled_close():
@@ -381,7 +381,7 @@ def test_start_fails_readiness_when_initial_subscription_fails(monkeypatch):
     asyncio.run(scenario())
 
 
-async def _refund_before_post_registration_recheck_is_rejected():
+async def _revocation_before_post_registration_recheck_is_rejected():
     manager = ConnectionManager()
     websocket = _FakeWebSocket()
     check_started = asyncio.Event()
@@ -414,11 +414,11 @@ async def _refund_before_post_registration_recheck_is_rejected():
     assert websocket.closed == [(4003, "access_revoked")]
 
 
-def test_refund_before_post_registration_recheck_cannot_leave_socket_open():
-    asyncio.run(_refund_before_post_registration_recheck_is_rejected())
+def test_revocation_before_post_registration_recheck_cannot_leave_socket_open():
+    asyncio.run(_revocation_before_post_registration_recheck_is_rejected())
 
 
-async def _refund_after_post_registration_recheck_reaches_registered_socket():
+async def _revocation_after_post_registration_recheck_reaches_registered_socket():
     manager = ConnectionManager()
     websocket = _FakeWebSocket()
 
@@ -443,8 +443,8 @@ async def _refund_after_post_registration_recheck_reaches_registered_socket():
     assert websocket.closed == [(4003, "access_revoked")]
 
 
-def test_refund_after_post_registration_recheck_closes_registered_socket():
-    asyncio.run(_refund_after_post_registration_recheck_reaches_registered_socket())
+def test_revocation_after_post_registration_recheck_closes_registered_socket():
+    asyncio.run(_revocation_after_post_registration_recheck_reaches_registered_socket())
 
 
 async def _missed_pubsub_revocation_is_caught_before_broadcast():
@@ -540,7 +540,7 @@ async def _global_fallback_is_fenced_for_active_and_blocked_companies():
     )
     blocked_manager._open_company_access_fence = (
         lambda _company_id, _connections=(): (_ for _ in ()).throw(
-            RuntimeError("refund_pending")
+            RuntimeError("inactive")
         )
     )
 
@@ -587,11 +587,11 @@ def test_reconciliation_is_fail_closed_when_durable_state_is_unavailable():
 def test_reconciliation_revalidates_principal_in_shared_active_company(monkeypatch):
     async def scenario():
         manager = ConnectionManager()
-        refunded_socket = _FakeWebSocket()
+        deactivated_socket = _FakeWebSocket()
         owner_socket = _FakeWebSocket()
         stale_token_socket = _FakeWebSocket()
         for websocket, client_id, token_version in (
-            (refunded_socket, "10", 1),
+            (deactivated_socket, "10", 1),
             (owner_socket, "30", 4),
             (stale_token_socket, "40", 1),
         ):
@@ -610,7 +610,7 @@ def test_reconciliation_revalidates_principal_in_shared_active_company(monkeypat
         clients = {
             10: SimpleNamespace(
                 id=10,
-                email="refunded@example.com",
+                email="deactivated@example.com",
                 is_active=False,
                 auth_token_version=1,
             ),
@@ -652,13 +652,8 @@ def test_reconciliation_revalidates_principal_in_shared_active_company(monkeypat
 
         fence = _PrincipalFenceDB()
         manager._open_company_access_fence = lambda _company_id, _connections=(): (fence, 7)
-        monkeypatch.setattr(
-            "backend.services.company_access_control.is_account_refund_blocked",
-            lambda _db, _account: False,
-        )
-
         assert await manager.reconcile_company_access(20) is True
-        assert refunded_socket.closed == [(4003, "access_revoked")]
+        assert deactivated_socket.closed == [(4003, "access_revoked")]
         assert stale_token_socket.closed == [(4003, "access_revoked")]
         assert owner_socket.closed == []
         assert set(manager.connections[20]) == {"30"}
@@ -738,7 +733,7 @@ def test_stalled_websocket_send_is_bounded_and_does_not_hold_fence_forever():
 def test_access_fence_uses_shared_try_locks_in_global_entity_order():
     db = _FakePostgresSession([True] * 6)
 
-    try_lock_refund_entities_for_access(
+    try_lock_entities_for_access(
         db,
         company_ids=[20, 10, 20],
         client_ids=[4, 2],
@@ -746,12 +741,12 @@ def test_access_fence_uses_shared_try_locks_in_global_entity_order():
     )
 
     assert [lock_key for _sql, lock_key in db.executed] == [
-        "refund-access:entity:company:10",
-        "refund-access:entity:company:20",
-        "refund-access:entity:client:2",
-        "refund-access:entity:client:4",
-        "refund-access:entity:user:8",
-        "refund-access:entity:user:9",
+        "entity-mutation:company:10",
+        "entity-mutation:company:20",
+        "entity-mutation:client:2",
+        "entity-mutation:client:4",
+        "entity-mutation:user:8",
+        "entity-mutation:user:9",
     ]
     assert all(
         "pg_try_advisory_xact_lock_shared" in sql
@@ -761,11 +756,11 @@ def test_access_fence_uses_shared_try_locks_in_global_entity_order():
     assert db.rollback_count == 0
 
 
-def test_access_fence_rolls_back_immediately_on_exclusive_refund_contention():
+def test_access_fence_rolls_back_immediately_on_exclusive_lock_contention():
     db = _FakePostgresSession([True, False, True])
 
     with pytest.raises(CompanyOperationalLockBusyError):
-        try_lock_refund_entities_for_access(
+        try_lock_entities_for_access(
             db,
             company_ids=[10],
             client_ids=[2],
@@ -773,8 +768,8 @@ def test_access_fence_rolls_back_immediately_on_exclusive_refund_contention():
         )
 
     assert [lock_key for _sql, lock_key in db.executed] == [
-        "refund-access:entity:company:10",
-        "refund-access:entity:client:2",
+        "entity-mutation:company:10",
+        "entity-mutation:client:2",
     ]
     assert db.rollback_count == 1
 
@@ -820,7 +815,7 @@ def test_concurrent_broadcasts_are_serialized_per_company():
     asyncio.run(_concurrent_broadcasts_are_serialized_per_company())
 
 
-async def _busy_refund_fence_retries_without_stalling_event_loop():
+async def _busy_access_fence_retries_without_stalling_event_loop():
     manager = ConnectionManager()
     manager.access_fence_retry_attempts = 4
     manager.access_fence_retry_delay_seconds = 0.01
@@ -859,7 +854,7 @@ async def _busy_refund_fence_retries_without_stalling_event_loop():
         manager.broadcast_to_phone(
             10,
             "contact",
-            {"type": "message", "content": "after refund fence"},
+            {"type": "message", "content": "after access fence"},
         ),
         timeout=0.2,
     )
@@ -869,15 +864,15 @@ async def _busy_refund_fence_retries_without_stalling_event_loop():
     assert attempts == 4
     assert heartbeat_ticks >= 20
     assert [item["content"] for item in websocket.sent] == [
-        "after refund fence"
+        "after access fence"
     ]
     assert websocket.closed == []
     assert fence.rolled_back is True
     assert fence.is_closed is True
 
 
-def test_busy_refund_fence_retries_asynchronously_and_keeps_heartbeat_alive():
-    asyncio.run(_busy_refund_fence_retries_without_stalling_event_loop())
+def test_busy_access_fence_retries_asynchronously_and_keeps_heartbeat_alive():
+    asyncio.run(_busy_access_fence_retries_without_stalling_event_loop())
 
 
 async def _persistent_busy_fence_does_not_impersonate_access_revocation():
@@ -1279,7 +1274,7 @@ def test_websocket_fence_marks_internal_session_for_transaction_fuse(monkeypatch
         lambda session: marked.append(session) or session,
     )
     monkeypatch.setattr(
-        "backend.services.company_access_control.try_lock_refund_entities_for_access",
+        "backend.services.company_access_control.try_lock_entities_for_access",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
@@ -1308,7 +1303,7 @@ def test_fence_cleanup_uses_reserved_executor_when_anyio_pool_is_saturated():
         waiters_started = 0
         waiters_guard = threading.Lock()
 
-        def blocking_refund_waiter():
+        def blocking_access_waiter():
             nonlocal waiters_started
             with waiters_guard:
                 waiters_started += 1
@@ -1316,7 +1311,7 @@ def test_fence_cleanup_uses_reserved_executor_when_anyio_pool_is_saturated():
 
         waiters = [
             asyncio.create_task(
-                shared_run_in_threadpool(blocking_refund_waiter)
+                shared_run_in_threadpool(blocking_access_waiter)
             )
             for _ in range(2)
         ]

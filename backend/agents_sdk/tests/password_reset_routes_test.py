@@ -11,9 +11,8 @@ os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-with-at-least-32-chars"
 
 from backend.routes import password_reset_routes
 from backend.services.company_access_control import (
-    RefundIdentityOperationBusyError,
+    IdentityOperationBusyError,
 )
-from backend.services.password_reset_service import PasswordResetRequestResult
 
 
 async def _allow_rate_limit(*_args, **_kwargs):
@@ -35,7 +34,7 @@ def test_forgot_password_busy_is_generic_503_with_retry_after(monkeypatch):
     )
 
     def busy(*_args, **_kwargs):
-        raise RefundIdentityOperationBusyError("capacity")
+        raise IdentityOperationBusyError("capacity")
 
     monkeypatch.setattr(password_reset_routes, "request_password_reset", busy)
 
@@ -54,39 +53,6 @@ def test_forgot_password_busy_is_generic_503_with_retry_after(monkeypatch):
     assert "owner@example.com" not in exc.value.detail
 
 
-def test_forgot_password_reports_refund_block(monkeypatch):
-    monkeypatch.setattr(
-        password_reset_routes.auth_rate_limiter,
-        "check",
-        _allow_rate_limit,
-    )
-    monkeypatch.setattr(
-        password_reset_routes,
-        "request_password_reset",
-        lambda *_args, **_kwargs: PasswordResetRequestResult(
-            account_found=False,
-            email_sent=False,
-            email_skipped=True,
-            refund_blocked=True,
-        ),
-    )
-
-    with pytest.raises(HTTPException) as exc:
-        asyncio.run(
-            password_reset_routes.request_password_reset_endpoint(
-                request=_request(),
-                data=SimpleNamespace(email="owner@example.com"),
-                db=object(),
-            )
-        )
-
-    assert exc.value.status_code == 423
-    assert (
-        exc.value.detail
-        == password_reset_routes.PASSWORD_RESET_REFUND_BLOCKED_MESSAGE
-    )
-
-
 def test_confirm_password_busy_preserves_transient_http_contract(monkeypatch):
     monkeypatch.setattr(
         password_reset_routes.auth_rate_limiter,
@@ -95,7 +61,7 @@ def test_confirm_password_busy_preserves_transient_http_contract(monkeypatch):
     )
 
     def busy(*_args, **_kwargs):
-        raise RefundIdentityOperationBusyError("external_identity")
+        raise IdentityOperationBusyError("external_identity")
 
     monkeypatch.setattr(password_reset_routes, "confirm_password_reset", busy)
 

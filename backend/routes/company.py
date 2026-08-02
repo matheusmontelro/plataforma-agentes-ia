@@ -14,28 +14,25 @@ from backend.services.ai_usage_service import (
     grant_managed_workspace_trial_ai_credits,
     managed_workspace_trial_credits_for_days,
 )
-from backend.services.brevo_email_service import send_managed_workspace_welcome_email
 from backend.services.password_reset_service import create_password_setup_token_for_account
 from backend.services.company_access_control import (
     AccountEmailCollisionError,
     CompanyOperationallyBlockedError,
-    RefundIdentityOperationBusyError,
-    RefundIdentityOperationReservation,
+    IdentityOperationBusyError,
+    IdentityOperationReservation,
+    account_identity_operation_lock,
+    account_identity_operation_reservation,
     ensure_company_operational,
-    is_account_refund_blocked,
-    is_email_refund_blocked,
     lock_and_resolve_account_email_identity,
-    lock_refund_entities_for_mutation,
+    lock_entities_for_mutation,
     normalize_account_email,
-    refund_identity_operation_lock,
-    refund_identity_operation_reservation,
 )
+from backend.services.transactional_email_service import send_password_setup_email
 from contextlib import ExitStack, contextmanager
 import os
 import logging
 import secrets
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Iterator, List, Optional
 from datetime import datetime, timedelta, timezone
 
@@ -147,8 +144,8 @@ def rollback_if_available(db: Session) -> None:
         rollback()
 
 
-def refund_operation_busy_http(
-    exc: RefundIdentityOperationBusyError,
+def identity_operation_busy_http(
+    exc: IdentityOperationBusyError,
 ) -> HTTPException:
     return HTTPException(
         status_code=503,
@@ -158,11 +155,11 @@ def refund_operation_busy_http(
 
 
 @contextmanager
-def managed_workspace_refund_identity_locks(
+def managed_workspace_account_identity_locks(
     db: Session,
     emails: List[str],
     *,
-    reservation: RefundIdentityOperationReservation,
+    reservation: IdentityOperationReservation,
 ) -> Iterator[None]:
     normalized_emails = sorted(
         {
@@ -174,7 +171,7 @@ def managed_workspace_refund_identity_locks(
     with ExitStack() as stack:
         for email in normalized_emails:
             stack.enter_context(
-                refund_identity_operation_lock(
+                account_identity_operation_lock(
                     db,
                     email,
                     reservation=reservation,
@@ -183,7 +180,7 @@ def managed_workspace_refund_identity_locks(
         yield
 
 
-def revalidate_managed_workspace_email_delivery(
+def revalidate_managed_workspace_password_setup(
     db: Session,
     *,
     owner_company_id: int,
@@ -194,7 +191,7 @@ def revalidate_managed_workspace_email_delivery(
     recipient_email: str,
     owner_client_ids: List[int],
 ) -> tuple[Client, Company, Company, CustomerManagedCompany] | None:
-    lock_refund_entities_for_mutation(
+    lock_entities_for_mutation(
         db,
         company_ids=[int(owner_company_id), int(managed_company_id)],
         client_ids=[
@@ -261,11 +258,6 @@ def revalidate_managed_workspace_email_delivery(
         or any(not bool(owner_client.is_active) for owner_client in owner_clients)
         or not managed_link
         or managed_link.lifecycle_status not in {"active", "trialing"}
-        or is_account_refund_blocked(db, recipient_client)
-        or any(
-            is_account_refund_blocked(db, owner_client)
-            for owner_client in owner_clients
-        )
     ):
         return None
 
@@ -274,10 +266,10 @@ def revalidate_managed_workspace_email_delivery(
     return recipient_client, owner_company, managed_company, managed_link
 
 
-def run_managed_workspace_welcome_after_commit(
+def run_managed_workspace_password_setup_after_commit(
     db: Session,
     *,
-    reservation: RefundIdentityOperationReservation,
+    reservation: IdentityOperationReservation,
     owner_company_id: int,
     managed_company_id: int,
     customer_id: int,
@@ -286,24 +278,26 @@ def run_managed_workspace_welcome_after_commit(
     recipient_email: str,
     owner_client_ids: List[int],
     owner_client_emails: List[str],
-    owner_email: str | None,
     client_created: bool,
-    trial_credits: float,
 ) -> dict:
     result = {
-        "managed_welcome_email_sent": False,
-        "managed_welcome_email_skipped": False,
         "password_setup_email_sent": False,
-        "password_setup_email_skipped": False,
+        "password_setup_email_skipped": not client_created,
+        "password_setup_email_reason": "existing_account" if not client_created else None,
+        "password_setup_url": None,
     }
+    if not client_created:
+        return result
+
+    fallback_setup_url = None
     try:
         rollback_if_available(db)
-        with managed_workspace_refund_identity_locks(
+        with managed_workspace_account_identity_locks(
             db,
             [recipient_email, *owner_client_emails],
             reservation=reservation,
         ):
-            state = revalidate_managed_workspace_email_delivery(
+            state = revalidate_managed_workspace_password_setup(
                 db,
                 owner_company_id=owner_company_id,
                 managed_company_id=managed_company_id,
@@ -315,99 +309,82 @@ def run_managed_workspace_welcome_after_commit(
             )
             if state is None:
                 rollback_if_available(db)
-                result["managed_welcome_email_skipped"] = True
-                result["password_setup_email_skipped"] = bool(client_created)
+                result["password_setup_email_skipped"] = True
+                result["password_setup_email_reason"] = "account_unavailable"
                 logger.info(
-                    "[companies-admin] Email de boas-vindas suprimido após "
-                    "bloqueio de reembolso client_id=%s",
+                    "[companies-admin] Definição de senha suprimida porque a conta "
+                    "não está disponível client_id=%s",
                     recipient_client_id,
                 )
                 return result
 
-            recipient_client, owner_company, managed_company, managed_link = state
-            password_setup_url = None
-            password_setup_expires_minutes = None
-            if client_created:
-                min_setup_ttl_minutes = (
-                    int(managed_link.trial_days) * 24 * 60
-                    if managed_link.trial_days
-                    else None
-                )
-                setup_token = create_password_setup_token_for_account(
-                    db,
-                    account=recipient_client,
-                    min_ttl_minutes=min_setup_ttl_minutes,
-                    _identity_lock_held=True,
-                )
-                password_setup_url = setup_token.reset_url
-                password_setup_expires_minutes = setup_token.expires_minutes
-
-                state = revalidate_managed_workspace_email_delivery(
-                    db,
-                    owner_company_id=owner_company_id,
-                    managed_company_id=managed_company_id,
-                    customer_id=customer_id,
-                    managed_link_id=managed_link_id,
-                    recipient_client_id=recipient_client_id,
-                    recipient_email=recipient_email,
-                    owner_client_ids=owner_client_ids,
-                )
-                if state is None:
-                    rollback_if_available(db)
-                    result["managed_welcome_email_skipped"] = True
-                    result["password_setup_email_skipped"] = True
-                    return result
-                recipient_client, owner_company, managed_company, managed_link = state
-
-            recipient_snapshot = SimpleNamespace(
-                id=int(recipient_client.id),
-                email=str(recipient_client.email),
-                billing_profile=dict(recipient_client.billing_profile or {}),
+            recipient_client, _owner_company, managed_company, managed_link = state
+            min_setup_ttl_minutes = (
+                int(managed_link.trial_days) * 24 * 60
+                if managed_link.trial_days
+                else None
             )
+            setup_token = create_password_setup_token_for_account(
+                db,
+                account=recipient_client,
+                min_ttl_minutes=min_setup_ttl_minutes,
+                _identity_lock_held=True,
+            )
+
+            state = revalidate_managed_workspace_password_setup(
+                db,
+                owner_company_id=owner_company_id,
+                managed_company_id=managed_company_id,
+                customer_id=customer_id,
+                managed_link_id=managed_link_id,
+                recipient_client_id=recipient_client_id,
+                recipient_email=recipient_email,
+                owner_client_ids=owner_client_ids,
+            )
+            if state is None:
+                rollback_if_available(db)
+                result["password_setup_email_skipped"] = True
+                result["password_setup_email_reason"] = "account_unavailable"
+                return result
+
+            recipient_client, _owner_company, managed_company, _managed_link = state
+            fallback_setup_url = setup_token.reset_url
+            billing_profile = dict(recipient_client.billing_profile or {})
+            recipient_name = billing_profile.get("full_name")
+            recipient_address = str(recipient_client.email)
             workspace_name = str(
                 managed_company.name_company or managed_company.name
             )
-            owner_company_name = str(
-                owner_company.name_company or owner_company.name
-            )
-            trial_days = int(managed_link.trial_days or 0)
-            trial_ends_at = managed_link.trial_ends_at
             rollback_if_available(db)
 
-            email_result = send_managed_workspace_welcome_email(
-                recipient_snapshot,
+            email_result = send_password_setup_email(
+                to_email=recipient_address,
+                to_name=recipient_name,
                 workspace_name=workspace_name,
-                owner_company_name=owner_company_name,
-                owner_email=owner_email,
-                trial_days=trial_days,
-                trial_ends_at=trial_ends_at,
-                trial_credits=trial_credits,
-                password_setup_url=password_setup_url,
-                password_setup_expires_minutes=password_setup_expires_minutes,
+                setup_url=setup_token.reset_url,
+                expires_minutes=setup_token.expires_minutes,
             )
-            result["managed_welcome_email_sent"] = bool(email_result.sent)
-            result["managed_welcome_email_skipped"] = bool(email_result.skipped)
-            result["password_setup_email_sent"] = bool(
-                email_result.sent and password_setup_url
-            )
-            result["password_setup_email_skipped"] = bool(
-                email_result.skipped and password_setup_url
-            )
-    except RefundIdentityOperationBusyError:
+            result["password_setup_email_sent"] = bool(email_result.sent)
+            result["password_setup_email_skipped"] = bool(email_result.skipped)
+            result["password_setup_email_reason"] = email_result.reason
+            if not email_result.sent:
+                result["password_setup_url"] = fallback_setup_url
+    except IdentityOperationBusyError:
         rollback_if_available(db)
-        result["managed_welcome_email_skipped"] = True
-        result["password_setup_email_skipped"] = bool(client_created)
+        result["password_setup_email_skipped"] = True
+        result["password_setup_email_reason"] = "identity_busy"
         logger.info(
-            "[companies-admin] Email de boas-vindas suprimido por contenção "
-            "de reembolso client_id=%s",
+            "[companies-admin] Definição de senha suprimida por contenção "
+            "de identidade client_id=%s",
             recipient_client_id,
         )
     except Exception as exc:
         rollback_if_available(db)
-        result["managed_welcome_email_skipped"] = True
-        result["password_setup_email_skipped"] = bool(client_created)
+        result["password_setup_email_skipped"] = True
+        result["password_setup_email_reason"] = "delivery_precondition_failed"
+        result["password_setup_url"] = fallback_setup_url
         logger.warning(
-            "[companies-admin] Email de boas-vindas suprimido por falha de "
+            "[companies-admin] Definição de senha suprimida por falha de "
             "revalidação client_id=%s erro=%s",
             recipient_client_id,
             exc.__class__.__name__,
@@ -629,11 +606,11 @@ def create_new_company_admin(
 ):
     normalized_client_email = normalize_workspace_email(client_email)
     try:
-        with refund_identity_operation_reservation(
+        with account_identity_operation_reservation(
             db,
             f"create-managed-workspace:{normalized_client_email}",
         ) as reservation:
-            return _create_new_company_admin_with_refund_reservation(
+            return _create_new_company_admin_with_identity_reservation(
                 client_email=client_email,
                 company_name=company_name,
                 company_cnpj=company_cnpj,
@@ -644,12 +621,12 @@ def create_new_company_admin(
                 normalized_client_email=normalized_client_email,
                 reservation=reservation,
             )
-    except RefundIdentityOperationBusyError as exc:
+    except IdentityOperationBusyError as exc:
         rollback_if_available(db)
-        raise refund_operation_busy_http(exc) from exc
+        raise identity_operation_busy_http(exc) from exc
 
 
-def _create_new_company_admin_with_refund_reservation(
+def _create_new_company_admin_with_identity_reservation(
     *,
     client_email: str,
     company_name: str,
@@ -659,7 +636,7 @@ def _create_new_company_admin_with_refund_reservation(
     db: Session,
     current_user,
     normalized_client_email: str,
-    reservation: RefundIdentityOperationReservation,
+    reservation: IdentityOperationReservation,
 ):
     """
     Cria uma nova empresa e a vincula ao usuário (Client) cujo e-mail for informado.
@@ -687,9 +664,6 @@ def _create_new_company_admin_with_refund_reservation(
             status_code=409,
             detail="Email já está em uso por um usuário interno",
         )
-    if is_email_refund_blocked(db, normalized_client_email):
-        raise HTTPException(status_code=423, detail="Acesso deste usuário está suspenso")
-
     logger.info(f"[companies-admin] Usuario {current_user.email} criando empresa para {normalized_client_email}")
 
     if trial_days not in {0, 3, 7, 14, 30}:
@@ -713,10 +687,8 @@ def _create_new_company_admin_with_refund_reservation(
             raise HTTPException(status_code=404, detail="Cliente para vínculo não encontrado")
         owner_company_id = int(linked_customer.company_id)
 
-    # Acquire every company fence before any client fence. This matches the
-    # refund service's global company -> client order and covers both the
-    # workspace owner and an existing target account whose email may have
-    # changed since the original invoice.
+    # Adquire entidades na ordem global company -> client e cobre tanto o
+    # workspace responsável quanto uma conta existente do cliente final.
     scope_company_ids = {
         *([owner_company_id] if owner_company_id is not None else []),
         *(
@@ -726,7 +698,7 @@ def _create_new_company_admin_with_refund_reservation(
         ),
     }
     if scope_company_ids:
-        lock_refund_entities_for_mutation(
+        lock_entities_for_mutation(
             db,
             company_ids=scope_company_ids,
         )
@@ -745,7 +717,7 @@ def _create_new_company_admin_with_refund_reservation(
         *([int(client.id)] if client is not None else []),
     }
     if scope_client_ids:
-        lock_refund_entities_for_mutation(
+        lock_entities_for_mutation(
             db,
             client_ids=scope_client_ids,
         )
@@ -761,7 +733,6 @@ def _create_new_company_admin_with_refund_reservation(
             not locked_client
             or not bool(locked_client.is_active)
             or normalize_account_email(locked_client.email) != normalized_client_email
-            or is_account_refund_blocked(db, locked_client)
         ):
             raise HTTPException(
                 status_code=423,
@@ -805,11 +776,7 @@ def _create_new_company_admin_with_refund_reservation(
             not owner_company
             or owner_company.operational_status != "active"
             or not owner_clients
-            or any(
-                not bool(owner_client.is_active)
-                or is_account_refund_blocked(db, owner_client)
-                for owner_client in owner_clients
-            )
+            or any(not bool(owner_client.is_active) for owner_client in owner_clients)
         ):
             raise HTTPException(
                 status_code=423,
@@ -855,8 +822,8 @@ def _create_new_company_admin_with_refund_reservation(
     trial_credits_granted = 0.0
     password_setup_email_sent = False
     password_setup_email_skipped = False
-    managed_welcome_email_sent = False
-    managed_welcome_email_skipped = False
+    password_setup_email_reason = None
+    password_setup_url = None
     managed_response = None
     trial_wallet_balance = 0.0
 
@@ -897,8 +864,7 @@ def _create_new_company_admin_with_refund_reservation(
         ensure_client_company_link(db, client_id=creator_client_id, company_id=new_company.id)
 
     # O vínculo de ownership faz parte da mesma transação da Company, Client e
-    # associações. Assim, o snapshot de reembolso nunca pode observar um
-    # workspace ativo ainda não ligado ao aluno responsável.
+    # associações para que o workspace nunca fique ativo sem responsável.
     if linked_customer is not None:
         trial_started_at = datetime.now(timezone.utc) if trial_days else None
         trial_ends_at = trial_started_at + timedelta(days=trial_days) if trial_started_at else None
@@ -942,9 +908,6 @@ def _create_new_company_admin_with_refund_reservation(
 
     new_company_id = int(new_company.id)
     recipient_client_id = int(client.id)
-    response_owner_email = (
-        str(getattr(current_user, "email", "") or "") or None
-    )
     db.commit()
 
     # 5) Criar pipeline padrão para a nova empresa
@@ -960,7 +923,7 @@ def _create_new_company_admin_with_refund_reservation(
         )
 
     if managed_response is not None:
-        email_flags = run_managed_workspace_welcome_after_commit(
+        email_flags = run_managed_workspace_password_setup_after_commit(
             db,
             reservation=reservation,
             owner_company_id=managed_response["owner_company_id"],
@@ -971,22 +934,18 @@ def _create_new_company_admin_with_refund_reservation(
             recipient_email=normalized_client_email,
             owner_client_ids=owner_client_ids,
             owner_client_emails=owner_client_emails,
-            owner_email=response_owner_email,
             client_created=client_created,
-            trial_credits=trial_credits_granted,
         )
-        managed_welcome_email_sent = email_flags[
-            "managed_welcome_email_sent"
-        ]
-        managed_welcome_email_skipped = email_flags[
-            "managed_welcome_email_skipped"
-        ]
         password_setup_email_sent = email_flags[
             "password_setup_email_sent"
         ]
         password_setup_email_skipped = email_flags[
             "password_setup_email_skipped"
         ]
+        password_setup_email_reason = email_flags[
+            "password_setup_email_reason"
+        ]
+        password_setup_url = email_flags["password_setup_url"]
 
     response = {
         "company_id": new_company_id,
@@ -1006,10 +965,11 @@ def _create_new_company_admin_with_refund_reservation(
         response["lifecycle_status"] = managed_response["lifecycle_status"]
         response["trial_credits_granted"] = trial_credits_granted
         response["ai_credit_balance"] = trial_wallet_balance
-        response["managed_welcome_email_sent"] = managed_welcome_email_sent
-        response["managed_welcome_email_skipped"] = managed_welcome_email_skipped
         response["password_setup_email_sent"] = password_setup_email_sent
         response["password_setup_email_skipped"] = password_setup_email_skipped
+        response["password_setup_email_reason"] = password_setup_email_reason
+        if password_setup_url:
+            response["password_setup_url"] = password_setup_url
     return response
 
 @router.get("/client-companies", summary="Lista todas as empresas vinculadas ao usuário logado")
@@ -1086,7 +1046,7 @@ def remove_user_company(
             detail="A empresa principal da conta não pode ser desvinculada.",
         )
 
-    lock_refund_entities_for_mutation(
+    lock_entities_for_mutation(
         db,
         company_ids=[int(user.ownership_company_id), int(company_id)],
         client_ids=[int(user.id)],
@@ -1097,7 +1057,7 @@ def remove_user_company(
         .with_for_update()
         .first()
     )
-    if not actor or not actor.is_active or is_account_refund_blocked(db, actor):
+    if not actor or not actor.is_active:
         raise HTTPException(status_code=423, detail="Acesso suspenso")
     try:
         ensure_company_operational(db, int(user.ownership_company_id))
