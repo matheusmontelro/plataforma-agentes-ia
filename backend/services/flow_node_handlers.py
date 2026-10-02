@@ -1188,6 +1188,11 @@ class SendTelegramMessageHandler(BaseNodeHandler):
 class CreateLeadHandler(BaseNodeHandler):
     """Handler for creating/updating leads in CRM"""
 
+    @staticmethod
+    def _is_valid_brazilian_e164(phone: str) -> bool:
+        """Return whether ``phone`` is a Brazilian number in E.164 digits format."""
+        return phone.startswith("55") and len(phone) in (12, 13)
+
     def _canonicalize_phone_for_waha(self, db: Session, company_id: int, phone: str) -> str:
         """
         Resolve canonical phone using WAHA check_number_status when WAHA is enabled.
@@ -1235,7 +1240,10 @@ class CreateLeadHandler(BaseNodeHandler):
                 return clean_phone
 
             canonical_phone = ''.join(filter(str.isdigit, chat_id.split("@")[0]))
-            if not canonical_phone:
+            if not self._is_valid_brazilian_e164(canonical_phone):
+                logger.warning(
+                    "[CreateLeadHandler] Ignoring WAHA chatId that is not a Brazilian phone number"
+                )
                 return clean_phone
 
             if canonical_phone != clean_phone:
